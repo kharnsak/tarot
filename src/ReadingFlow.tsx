@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Share2, MessageCircleQuestion } from "lucide-react";
 import { CardArt } from "./art";
-import { cardById, cards, decision, interpretation } from "./tarot";
-import type { Topic } from "./tarot";
-import { dayKey, drawCards, loadJournal, thaiDate } from "./storage";
+import { astroProfile } from "./astro";
+import { cardText, dailyCard, drawCards as drawTarot, drawSpread, getDeck, SPREADS, yesNo } from "./tarot";
+import type { SpreadId, Topic } from "./tarot";
+import { dayKey, drawCards, loadBirth, loadJournal, thaiDate, userId } from "./storage";
 import type { Reading } from "./storage";
+import { focusOf, isYesNo, resolveCards, quoteIndex } from "./reading";
+import followups from "../content/followup.json";
 import Picker from "./ui/Picker";
 import FlipCard from "./ui/FlipCard";
-import { chips, positions, ui } from "./ui/copy";
+import { chipOf, chips, ui } from "./ui/copy";
 
 type Step = "setup" | "pick" | "result";
 const spring = { type: "spring", stiffness: 120, damping: 20 } as const;
@@ -67,21 +70,36 @@ export default function ReadingFlow({
   onClose: () => void;
 }) {
   const reduce = useReducedMotion();
-  const startChip = chips.find((c) => c.id === initialChip) ?? chips[0];
+  const startChip = chips.find((c) => c.id === initialChip) ?? (existing ? chipOf(existing) : chips[0]);
   const [step, setStep] = useState<Step>(existing ? "result" : "setup");
   const chip = startChip;
   const [count, setCount] = useState<1 | 3>(1);
   const [question, setQuestion] = useState(startChip.preset);
   const [reading, setReading] = useState<Reading | undefined>(existing);
   const [deck, setDeck] = useState<string[]>([]);
+  const [fanReversed, setFanReversed] = useState<boolean[]>([]);
   const [shuffling, setShuffling] = useState(false);
   const [asking, setAsking] = useState(false);
   const holdStart = useRef(0);
   const holdTimer = useRef<number>(0);
   const heading = useRef<HTMLHeadingElement>(null);
   const topic: Topic = reading?.topic ?? (daily ? "general" : chip.topic);
-  const decide = (existing?.topic ?? chip.topic) === "decision";
-  const pickCount = decide ? 1 : count;
+  const spreadId: SpreadId | null = daily ? "daily" : chip.spread;
+  const toggle = !daily && spreadId === null;
+  const pickCount = (spreadId ? SPREADS[spreadId].count : count) as 1 | 3;
+  const pickLabels = spreadId ? SPREADS[spreadId].positions.map((p) => p.label) : count === 3 ? SPREADS.love3.positions.map((p) => p.label) : undefined;
+  const fresh = () => drawCards(getDeck("major").map((c) => c.id), 15);
+  const personal = useMemo(() => {
+    const birth = loadBirth();
+    return birth ? astroProfile(birth)?.lines[0] : undefined;
+  }, []);
+  const askKey = reading ? chipOf(reading).followKey : null;
+  const followList = useMemo(() => {
+    const pool = askKey ? (followups as Record<string, string[]>)[askKey] : undefined;
+    if (!pool?.length) return (reading ? chipOf(reading) : chip).followUps;
+    return drawCards(pool, 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askKey, reading?.id]);
 
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
@@ -98,7 +116,8 @@ export default function ReadingFlow({
       }
     }
     setQuestion(q);
-    setDeck(drawCards(cards.map((c) => c.id), 15));
+    setDeck(fresh());
+    setFanReversed([]);
     setShuffling(false);
     setStep("pick");
   }
@@ -118,14 +137,29 @@ export default function ReadingFlow({
   }
 
   function picked(indices: number[]) {
+    // The draw itself comes from the data API; the fan is only the ritual, so the chosen slots
+    // are dealt the drawn cards.
+    const sid = spreadId ?? (count === 3 ? "love3" : null);
+    const drawn = daily
+      ? [dailyCard(userId(), dayKey())]
+      : sid
+        ? drawSpread(sid)
+        : drawTarot(1, { allowReversed: true });
+    const nextDeck = [...deck];
+    indices.forEach((slot, i) => (nextDeck[slot] = drawn[i].card.id));
+    setDeck(nextDeck);
+    setFanReversed(drawn.map((d) => d.reversed));
     const result: Reading = {
       id: crypto.randomUUID(),
       date: dayKey(),
       createdAt: new Date().toISOString(),
       topic,
       question: question.trim(),
-      cards: indices.map((i) => deck[i]),
+      cards: drawn.map((d) => d.card.id),
       daily,
+      spread: sid ?? undefined,
+      reversed: drawn.map((d) => d.reversed),
+      focus: daily ? "core" : chip.focus,
     };
     const current = daily ? loadJournal().readings.find((r) => r.daily && r.date === dayKey()) : undefined;
     setReading(current || result);
@@ -137,11 +171,14 @@ export default function ReadingFlow({
     setAsking(false);
     setQuestion(q);
     setCount(1);
-    setDeck(drawCards(cards.map((c) => c.id), 15));
+    setDeck(fresh());
+    setFanReversed([]);
     setStep("pick");
   }
 
-  const result = reading?.cards.map((id) => cardById.get(id)!) ?? [];
+  const result = reading ? resolveCards(reading) : [];
+  const focus = reading ? focusOf(reading) : "core";
+  const qi = quoteIndex(result.length);
   const stepIndex = step === "setup" ? 0 : step === "pick" ? 1 : 2;
 
   return (
@@ -170,7 +207,7 @@ export default function ReadingFlow({
                     <button key={ex} type="button" className="pill" onClick={() => setQuestion(ex)}>{ex}</button>
                   ))}
                 </div>
-                {!decide && (
+                {toggle && (
                   <div className="segment" role="group" aria-label={ui.setup.spreadLabel}>
                     {([1, 3] as const).map((n) => (
                       <button key={n} type="button" aria-pressed={count === n} className={count === n ? "on" : ""} onClick={() => setCount(n)}>
@@ -179,7 +216,7 @@ export default function ReadingFlow({
                     ))}
                   </div>
                 )}
-                {!decide && count === 3 && <p className="fine center">{ui.setup.spreadHint3}</p>}
+                {pickLabels && pickLabels.length > 1 && <p className="fine center">{pickLabels.join(" · ")}</p>}
               </div>
             )}
 
@@ -203,45 +240,61 @@ export default function ReadingFlow({
 
         {step === "pick" && (
           <motion.div key="pick" className="step" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-            <Picker deck={deck} count={pickCount as 1 | 3} onPicked={picked} onRead={() => setStep("result")} />
+            <Picker deck={deck} count={pickCount} reversed={fanReversed} labels={pickLabels} onPicked={picked} onRead={() => setStep("result")} />
           </motion.div>
         )}
 
         {step === "result" && reading && (
           <motion.div key="result" className="step result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
             <p className="eyebrow center">
-              {reading.daily ? ui.home.dailyTitle : (chips.find((c) => c.topic === reading.topic)?.label ?? "")} · {thaiDate(new Date(reading.createdAt), true)}
+              {reading.daily ? ui.home.dailyTitle : chipOf(reading).label} · {thaiDate(new Date(reading.createdAt), true)}
             </p>
             <h2 ref={heading} tabIndex={-1} className="sr-only">{ui.result.title}</h2>
             <div className={`result-cards count-${result.length}`}>
-              {result.map((card, i) => (
-                <motion.figure className="result-card" key={card.id} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.1 + i * 0.12 }}>
-                  <FlipCard card={card} flipped />
-                  {result.length > 1 && <figcaption>{positions[i]}</figcaption>}
+              {result.map((r, i) => (
+                <motion.figure className="result-card" key={r.card.id} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.1 + i * 0.12 }}>
+                  <FlipCard card={r.card} flipped reversed={r.reversed} />
+                  {(r.label || r.reversed) && (
+                    <figcaption>
+                      {r.label}
+                      {r.reversed && <span className="reversed-tag">{ui.result.reversed}</span>}
+                    </figcaption>
+                  )}
                 </motion.figure>
               ))}
             </div>
             {reading.question && <p className="your-question">“{reading.question}”</p>}
-            <motion.p className="quote" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={spring}>
-              {result[result.length === 3 ? 1 : 0].keyword}
+            {isYesNo(reading) && (() => {
+              const v = ui.result.verdict[yesNo(result[0].card, result[0].reversed)];
+              return (
+                <div className="verdict-big" data-testid="verdict">
+                  <small className="fine">{ui.result.yesno}</small>
+                  <strong>{v.big}</strong>
+                  <span>{v.sub}</span>
+                </div>
+              );
+            })()}
+            <motion.p className="quote" data-testid="quote" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={spring}>
+              {cardText(result[qi].card, result[qi].reversed, "advice")}
             </motion.p>
             <div className="readings">
-              {result.map((card, i) => (
-                <motion.article className="read-block" key={card.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={spring}>
+              {result.map((r) => (
+                <motion.article className="read-block" key={r.card.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={spring}>
                   <header>
-                    {result.length > 1 && <small>{positions[i]}</small>}
-                    <h3>{card.thai}</h3>
-                    <span className="en">{card.name}</span>
+                    {r.label && <small>{r.label}</small>}
+                    <h3>{r.card.nameTh}{r.reversed && <span className="reversed-tag">{ui.result.reversed}</span>}</h3>
+                    <span className="en">{r.card.nameEn}</span>
                   </header>
-                  <p>{interpretation(card, reading.topic)}</p>
-                  {reading.topic === "decision" && <p className="verdict">{decision(card)}</p>}
-                  {card.advice && <p className="advice"><b>{ui.result.advice}</b>{card.advice}</p>}
+                  <p><b className="sr-only">{ui.result.labels[focus]}: </b>{cardText(r.card, r.reversed, focus)}</p>
                 </motion.article>
               ))}
             </div>
+            {personal && (
+              <p className="personal" data-testid="personal"><b>{ui.result.personal}</b>{personal}</p>
+            )}
 
             <div className="result-actions">
-              <button className="button primary" onClick={() => onShare(reading)}>
+              <button className="button primary" data-testid="share" onClick={() => onShare(reading)}>
                 <Share2 size={18} />
                 {ui.result.share}
               </button>
@@ -254,7 +307,7 @@ export default function ReadingFlow({
               {asking && (
                 <motion.div className="followups" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
                   <p className="fine center">{ui.result.askTitle}</p>
-                  {(chips.find((c) => c.topic === reading.topic && c.id === chip.id) ?? chips.find((c) => c.topic === reading.topic) ?? chips[5]).followUps.map((q) => (
+                  {followList.map((q) => (
                     <button key={q} className="pill block" onClick={() => again(q)}>{q}</button>
                   ))}
                 </motion.div>

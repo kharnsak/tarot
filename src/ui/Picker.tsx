@@ -4,7 +4,7 @@ import { CardArt } from "../art";
 import { cardById } from "../tarot";
 import FlipCard from "./FlipCard";
 import Hand from "./Hand";
-import { ui } from "./copy";
+import { REVERSED_LABEL, ui } from "./copy";
 import { hintSeen, markHintSeen } from "./theme";
 
 const N = 15; // cards in the fan
@@ -21,11 +21,16 @@ type Fly = { x: number; y: number; rotate: number; scale: number };
 export default function Picker({
   deck,
   count,
+  reversed = [],
+  labels = ["ที่ผ่านมา", "ตอนนี้", "ข้างหน้า"],
   onPicked,
   onRead,
 }: {
   deck: string[];
   count: 1 | 3;
+  /** Parallel to pick order: show that card upside-down. */
+  reversed?: boolean[];
+  labels?: string[];
   onPicked: (indices: number[]) => void;
   onRead: () => void;
 }) {
@@ -160,6 +165,7 @@ export default function Picker({
           {full ? ui.pick.pickedAll : ui.pick.title(next, count)}
         </h2>
         <p className="muted" aria-live="polite">{ui.pick.sub}</p>
+        {count > 1 && <p className="fine center">{ui.pick.counter(picked.length, count)}</p>}
       </div>
 
       <div className={`slots count-${count}`} style={{ ["--slot-w" as string]: `${slotW}px` }}>
@@ -177,11 +183,11 @@ export default function Picker({
                     animate={{ x: 0, y: 0, rotate: 0, scale: 1, opacity: 1 }}
                     transition={reduce ? { duration: 0.25 } : { type: "spring", stiffness: 120, damping: 18 }}
                   >
-                    <FlipCard card={card} flipped={revealed > k} />
+                    <FlipCard card={card} flipped={revealed > k} reversed={!!reversed[k]} />
                   </motion.div>
                 )}
               </div>
-              {count === 3 && <span className="slot-label">{["ที่ผ่านมา", "ตอนนี้", "ข้างหน้า"][k]}</span>}
+              {count === 3 && <span className="slot-label">{labels[k]}{revealed > k && reversed[k] && <span className="reversed-tag">{REVERSED_LABEL}</span>}</span>}
             </div>
           );
         })}

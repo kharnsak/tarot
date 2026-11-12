@@ -1,5 +1,6 @@
 import { cardById, SPREADS } from "./tarot";
 import type { SpreadId, Topic } from "./tarot";
+import { parseBirthDate } from "./astro";
 import { secureRng, shuffle } from "./data/rng";
 
 /** Maximum readings kept in history. */
@@ -17,6 +18,8 @@ export type Reading = {
   spread?: SpreadId;
   /** Parallel to `cards`: true when that card was drawn reversed. */
   reversed?: boolean[];
+  /** Which card text the reading shows (cardText key). Absent on older readings. */
+  focus?: "core" | "love" | "them" | "work" | "money";
 };
 export type Journal = { readings: Reading[]; storageUnavailable: boolean };
 const key = "chanjai-journal-v1";
@@ -57,6 +60,7 @@ export function isReading(value: unknown): value is Reading {
       (typeof v.spread === "string" && Object.hasOwn(SPREADS, v.spread) && SPREADS[v.spread].count === v.cards.length)) &&
     (v.reversed === undefined ||
       (Array.isArray(v.reversed) && v.reversed.length === v.cards.length && v.reversed.every((r) => typeof r === "boolean"))) &&
+    (v.focus === undefined || ["core", "love", "them", "work", "money"].includes(v.focus)) &&
     new Set(v.cards).size === v.cards.length &&
     v.cards.every((id) => cardById.has(id))
   );
@@ -125,4 +129,42 @@ export function streakInfo(readings: Reading[], now = new Date()) {
     longest,
     doneToday: days.includes(dayKey(now)),
   };
+}
+
+// --- anonymous id (seeds the daily card) and optional birth data -------------------------
+const uidKey = "chanjai-uid-v1";
+let memoryUid = "";
+export function userId() {
+  try {
+    let id = localStorage.getItem(uidKey);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(uidKey, id);
+    }
+    return id;
+  } catch {
+    return (memoryUid ||= crypto.randomUUID());
+  }
+}
+const birthKey = "chanjai-birth-v1";
+export type Birth = { date: string; time?: string };
+export function loadBirth(): Birth | undefined {
+  try {
+    const v = JSON.parse(localStorage.getItem(birthKey) || "null");
+    if (v && typeof v.date === "string" && parseBirthDate(v.date)) {
+      return { date: v.date, time: typeof v.time === "string" && /^\d{1,2}:\d{2}$/.test(v.time) ? v.time : undefined };
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  return undefined;
+}
+export function saveBirth(birth?: Birth) {
+  try {
+    if (birth) localStorage.setItem(birthKey, JSON.stringify(birth));
+    else localStorage.removeItem(birthKey);
+    return true;
+  } catch {
+    return false;
+  }
 }

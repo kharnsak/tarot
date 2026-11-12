@@ -113,9 +113,9 @@ export function CardArt({
       }
       aria-hidden={decorative || undefined}
     >
-      {path ? (
+      {path || !card ? (
         <img
-          src={path}
+          src={path || `${import.meta.env.BASE_URL}cards/back.webp`}
           alt=""
           onError={(e) => {
             e.currentTarget.style.display = "none";
@@ -124,7 +124,7 @@ export function CardArt({
         />
       ) : null}
       <div
-        hidden={!!path}
+        hidden={!!path || !card}
         dangerouslySetInnerHTML={{ __html: cardSvg(card, id) }}
       />
     </div>

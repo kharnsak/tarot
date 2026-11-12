@@ -15,7 +15,7 @@ async function pickAll(page: Page, count: number) {
   }
   await page.getByRole("button", { name: "เปิดไพ่", exact: true }).click();
   await page.getByRole("button", { name: "อ่านคำทำนาย" }).click();
-  await expect(page.getByRole("button", { name: "แชร์ผล" })).toBeVisible();
+  await expect(page.getByTestId("share")).toBeVisible();
 }
 
 test("mobile daily ritual persists the same card and exports a real PNG", async ({ page }, testInfo) => {
@@ -25,20 +25,20 @@ test("mobile daily ritual persists the same card and exports a real PNG", async 
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("ไพ่ประจำวัน");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole("button", { name: "เปิดไพ่ประจำวัน", exact: true }).click();
+  await page.locator(".daily-card .button.primary").click();
   await shuffle(page);
   await pickAll(page, 1);
   const first = await page.evaluate(() => JSON.parse(localStorage.getItem("chanjai-journal-v1")!));
   expect(first).toHaveLength(1);
   expect(first[0].daily).toBe(true);
-  await page.getByRole("button", { name: "แชร์ผล" }).click();
+  await page.getByTestId("share").click();
   await expect(page.getByRole("img", { name: "ภาพผลไพ่ของคุณสำหรับแชร์" })).toBeVisible();
   for (const [label, h] of [["สตอรี่", 1920], ["โพสต์", 1350]] as const) {
     await page.getByRole("button", { name: label, exact: true }).click();
-    await expect(page.getByRole("link", { name: "บันทึกภาพ PNG" })).toBeVisible();
+    await expect(page.getByTestId("save-png")).toBeVisible();
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("link", { name: "บันทึกภาพ PNG" }).click(),
+      page.getByTestId("save-png").click(),
     ]);
     await download.saveAs(testInfo.outputPath(`share-${h}.png`));
     const png = await readFile(testInfo.outputPath(`share-${h}.png`));
@@ -46,8 +46,8 @@ test("mobile daily ritual persists the same card and exports a real PNG", async 
     expect(png.readUInt32BE(20)).toBe(h);
   }
   await page.reload();
-  await page.getByRole("button", { name: "อ่านอีกครั้ง", exact: true }).first().click();
-  await expect(page.getByRole("button", { name: "แชร์ผล" })).toBeVisible();
+  await page.locator(".daily-card .button.primary").click();
+  await expect(page.getByTestId("share")).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("chanjai-journal-v1")!)[0].cards)).toEqual(first[0].cards);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "บันทึกของใจ", exact: true }).click();
@@ -62,7 +62,6 @@ test("three-card love reading keeps question and uses three unique cards", async
   await page.goto("/");
   await page.getByRole("button", { name: "ความรัก", exact: true }).click();
   await page.getByLabel("คำถามของคุณ").fill("เรากับเขาจะไปต่อไหม");
-  await page.getByRole("button", { name: "3 ใบ", exact: true }).click();
   await shuffle(page);
   await pickAll(page, 3);
   await expect(page.locator(".result-card")).toHaveCount(3);
@@ -70,6 +69,11 @@ test("three-card love reading keeps question and uses three unique cards", async
   const r = await page.evaluate(() => JSON.parse(localStorage.getItem("chanjai-journal-v1")!)[0]);
   expect(new Set(r.cards).size).toBe(3);
   expect(r.topic).toBe("love");
+  expect(r.spread).toBe("love3");
+  expect(r.reversed).toHaveLength(3);
+  // Major Arcana only, with the card's advice as the big quote
+  expect(r.cards.every((id: string) => !/-of-/.test(id))).toBe(true);
+  await expect(page.getByTestId("quote")).not.toBeEmpty();
   await page.getByRole("button", { name: "ถามต่อ" }).click();
   await expect(page.locator(".followups .pill")).toHaveCount(3);
 });
@@ -104,10 +108,49 @@ test("storage denial still lets someone draw and share", async ({ page }) => {
     Object.defineProperty(window, "localStorage", { get() { throw new DOMException("denied", "SecurityError"); } });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "เปิดไพ่ประจำวัน", exact: true }).click();
+  await page.locator(".daily-card .button.primary").click();
   await shuffle(page);
   await pickAll(page, 1);
   await expect(page.getByRole("status")).toContainText("เบราว์เซอร์นี้บันทึกไม่ได้");
-  await page.getByRole("button", { name: "แชร์ผล" }).click();
-  await expect(page.getByRole("link", { name: "บันทึกภาพ PNG" })).toBeVisible();
+  await page.getByTestId("share").click();
+  await expect(page.getByTestId("save-png")).toBeVisible();
+});
+
+test("yes/no gives a big answer and a major card", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Yes / No", exact: true }).click();
+  await page.getByLabel("คำถามของคุณ").fill("ควรย้ายที่อยู่ไหม");
+  await expect(page.getByRole("group", { name: "จำนวนไพ่" })).toHaveCount(0);
+  await shuffle(page);
+  await pickAll(page, 1);
+  await expect(page.getByTestId("verdict").locator("strong")).toHaveText(/^(ใช่|ไม่ใช่|ยังไม่ชัด)$/);
+  const r = await page.evaluate(() => JSON.parse(localStorage.getItem("chanjai-journal-v1")!)[0]);
+  expect(r.spread).toBe("yesno");
+  expect(r.topic).toBe("decision");
+});
+
+test("free question toggles 1 or 3 cards", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "ถามเอง", exact: true }).click();
+  await page.getByRole("button", { name: "3 ใบ", exact: true }).click();
+  await shuffle(page);
+  await pickAll(page, 3);
+  await expect(page.locator(".result-card")).toHaveCount(3);
+});
+
+test("birth date adds a personal line and lucky colours", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "ตั้งค่าวันเกิด" }).click();
+  await page.locator('input[name="birth-date"]').fill("1995-03-13");
+  await page.getByRole("button", { name: "บันทึก", exact: true }).click();
+  expect(await page.evaluate(() => localStorage.getItem("chanjai-birth-v1"))).toContain("1995-03-13");
+  await page.locator(".daily-card .button.primary").click();
+  await shuffle(page);
+  await pickAll(page, 1);
+  await expect(page.getByTestId("personal")).toBeVisible();
+  await page.getByRole("button", { name: "เสร็จแล้ว" }).click();
+  await expect(page.getByTestId("lucky")).toBeVisible();
+  await expect(page.getByTestId("streak-note")).toBeVisible();
 });

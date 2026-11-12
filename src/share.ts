@@ -1,8 +1,9 @@
-import { cardById } from "./tarot";
+import { cardText } from "./tarot";
 import { cardSvg } from "./art";
 import { thaiDate } from "./storage";
 import type { Reading } from "./storage";
-import { chips, positions, ui } from "./ui/copy";
+import { chipOf, ui } from "./ui/copy";
+import { quoteIndex, resolveCards } from "./reading";
 
 export type ShareFormat = "story" | "feed";
 const SIZES: Record<ShareFormat, [number, number]> = { story: [1080, 1920], feed: [1080, 1350] };
@@ -79,10 +80,11 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
   ctx.fillText(ui.brand, W / 2, top);
   ctx.fillStyle = "#6B6660";
   ctx.font = '400 28px "Anuphan"';
-  const label = reading.daily ? ui.share.dailyLabel : (chips.find((c) => c.topic === reading.topic)?.label ?? "");
+  const label = reading.daily ? ui.share.dailyLabel : chipOf(reading).label;
   ctx.fillText(`${label} · ${thaiDate(new Date(reading.createdAt))}`, W / 2, top + 54);
 
-  const selected = reading.cards.map((id) => cardById.get(id)!);
+  const resolved = resolveCards(reading);
+  const selected = resolved.map((r) => r.card);
   const count = selected.length;
   const cw = count === 1 ? (story ? 460 : 360) : count === 2 ? (story ? 380 : 300) : story ? 304 : 290;
   const ch = (cw * 350) / 220;
@@ -100,7 +102,7 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
     ctx.shadowColor = "rgba(40,30,10,.38)";
     ctx.shadowBlur = 60;
     ctx.shadowOffsetY = 28;
-    ctx.fillStyle = "#111";
+    ctx.fillStyle = "#2a1745";
     ctx.beginPath();
     ctx.roundRect(x, cy, cw, ch, 16);
     ctx.fill();
@@ -109,34 +111,38 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
     ctx.beginPath();
     ctx.roundRect(x, cy, cw, ch, 16);
     ctx.clip();
-    ctx.drawImage(image, x, cy, cw, ch);
+    if (resolved[i].reversed) {
+      ctx.translate(x + cw / 2, cy + ch / 2);
+      ctx.rotate(Math.PI);
+      ctx.drawImage(image, -cw / 2, -ch / 2, cw, ch);
+    } else ctx.drawImage(image, x, cy, cw, ch);
     ctx.restore();
     if (count > 1) {
       ctx.fillStyle = "#8A6A22";
       ctx.font = '500 26px "Anuphan"';
-      ctx.fillText(positions[i], x + cw / 2, cy + ch + 50);
-      ctx.fillStyle = "#111";
+      ctx.fillText(resolved[i].label + (resolved[i].reversed ? ` · ${ui.result.reversed}` : ""), x + cw / 2, cy + ch + 50);
+      ctx.fillStyle = "#2a1745";
       ctx.font = '600 32px "Anuphan"';
-      ctx.fillText(card.thai, x + cw / 2, cy + ch + 96);
+      ctx.fillText(card.nameTh, x + cw / 2, cy + ch + 96);
     }
   }
   let y = cy + ch + (count > 1 ? 96 : 0);
   if (count === 1) {
-    ctx.fillStyle = "#111";
+    ctx.fillStyle = "#2a1745";
     ctx.font = '600 48px "Anuphan"';
-    ctx.fillText(selected[0].thai, W / 2, y + 84);
+    ctx.fillText(selected[0].nameTh + (resolved[0].reversed ? ` · ${ui.result.reversed}` : ""), W / 2, y + 84);
     ctx.fillStyle = "#8A6A22";
     ctx.font = 'italic 500 34px "Cormorant Garamond"';
-    ctx.fillText(selected[0].name, W / 2, y + 132);
+    ctx.fillText(selected[0].nameEn, W / 2, y + 132);
     y += 132;
   }
 
   // the big line
-  const quote = selected[count === 3 ? 1 : 0].keyword;
+  const quote = cardText(resolved[quoteIndex(count)].card, resolved[quoteIndex(count)].reversed, "advice");
   const qsize = story ? 70 : 58;
-  ctx.fillStyle = "#111";
+  ctx.fillStyle = "#2a1745";
   ctx.font = `600 ${qsize}px "Anuphan"`;
-  const ql = lines(ctx, quote, W - 220).slice(0, 3);
+  const ql = lines(ctx, quote, W - 220).slice(0, story ? 5 : 4);
   y += story ? 130 : 108;
   ql.forEach((l, i) => ctx.fillText(l, W / 2, y + qsize + i * qsize * 1.3));
   y += qsize + (ql.length - 1) * qsize * 1.3;
@@ -146,7 +152,7 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
     ctx.font = '400 32px "Anuphan"';
     ctx.fillStyle = "#6B6660";
     for (const [i, card] of selected.entries()) {
-      const row = `${positions[i]} · ${card.keyword}`;
+      const row = `${resolved[i].label} · ${card.keywords[0] ?? card.keyword}`;
       ctx.fillText(lines(ctx, row, W - 240)[0], W / 2, y + i * 58);
     }
   }

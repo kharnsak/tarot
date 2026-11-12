@@ -8,3 +8,4 @@ playwright-report/
 *.local
 *.tsbuildinfo
 public/cards/raw/
+public/cards/raw/

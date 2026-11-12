@@ -1,7 +1,10 @@
 :root {
   --bg: #f7f4ee;
   --bg-soft: #efeae0;
-  --ink: #111111;
+  --ink: #2a1745;
+  --accent: #6b3fa0;
+  --accent-2: #8e5cc7;
+  --pink: #f4b6c8;
   --ink-2: #6b6660;
   --gold: #b8913a;
   --gold-light: #e9cf8a;
@@ -9,7 +12,7 @@
   --foil: linear-gradient(135deg, #b8913a 0%, #f0db9c 38%, #b8913a 62%, #e9cf8a 100%);
   --glass: rgba(255, 255, 255, 0.55);
   --glass-edge: rgba(255, 255, 255, 0.75);
-  --line: rgba(17, 17, 17, 0.09);
+  --line: rgba(74, 40, 120, 0.12);
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 18px 50px -18px rgba(70, 52, 18, 0.28);
   --field: rgba(255, 255, 255, 0.7);
   --danger: #a3331f;
@@ -18,10 +21,11 @@
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #0d0d0f;
-  --bg-soft: #151518;
-  --ink: #f4f0e8;
-  --ink-2: #a39d92;
+  --bg: #1e1430;
+  --bg-soft: #281a40;
+  --ink: #f6f0e8;
+  --ink-2: #b4a8c8;
+  --accent: #b48ae6;
   --gold-text: #dcc27a;
   --glass: rgba(255, 255, 255, 0.06);
   --glass-edge: rgba(255, 255, 255, 0.12);
@@ -45,10 +49,10 @@ body {
   overflow-x: hidden;
 }
 :root:not([data-theme="dark"]) body {
-  background: radial-gradient(120% 60% at 50% 0%, #fffdf8 0%, var(--bg) 55%, #f1ece1 100%);
+  background: var(--bg);
 }
 :root[data-theme="dark"] body {
-  background: radial-gradient(100% 50% at 50% 0%, #1a1814 0%, var(--bg) 60%);
+  background: var(--bg);
 }
 button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -87,10 +91,10 @@ main { flex: 1; display: flex; flex-direction: column; gap: 28px; padding-bottom
 .button:active { transform: scale(0.98); }
 .button.full { width: 100%; }
 .button.primary {
-  color: #1b1406; background: var(--foil); background-size: 220% 220%;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 10px 26px -10px rgba(184, 145, 58, 0.7);
-  animation: foil 7s ease-in-out infinite;
+  color: #fff; background: var(--accent);
+  box-shadow: 0 10px 26px -12px rgba(107, 63, 160, 0.7);
 }
+:root[data-theme="dark"] .button.primary { color: #1e1430; background: #c9a7f0; }
 .button.secondary { background: var(--glass); border-color: var(--glass-edge); color: var(--ink); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); box-shadow: var(--shadow); }
 .button.danger { background: var(--danger); color: #fff; }
 @keyframes foil { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
@@ -102,12 +106,12 @@ main { flex: 1; display: flex; flex-direction: column; gap: 28px; padding-bottom
 .segment { display: inline-flex; align-self: center; padding: 3px; border-radius: 999px; background: var(--bg-soft); border: 1px solid var(--line); }
 .segment button { border: 0; background: transparent; padding: 7px 22px; border-radius: 999px; font-size: 15px; font-weight: 500; color: var(--ink-2); }
 .segment button.on { background: var(--bg); color: var(--ink); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12); }
-:root[data-theme="dark"] .segment button.on { background: #2a2824; }
+:root[data-theme="dark"] .segment button.on { background: #3a2858; }
 
 .glass { background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 28px; backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); box-shadow: var(--shadow); }
 
 /* ---------- cards ---------- */
-.card-art { position: relative; width: 100%; aspect-ratio: 220 / 350; border-radius: 6.4%; overflow: hidden; background: #0b0b0d; box-shadow: 0 0 0 0.5px rgba(184, 145, 58, 0.6), 0 14px 30px -12px rgba(30, 22, 6, 0.55); }
+.card-art { position: relative; width: 100%; aspect-ratio: 220 / 350; border-radius: 6.4%; overflow: hidden; background: #efe6f3; box-shadow: 0 0 0 0.5px rgba(184, 145, 58, 0.6), 0 14px 30px -12px rgba(30, 22, 6, 0.55); }
 .card-art > div, .card-art svg { display: block; width: 100%; height: 100%; }
 .card-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .card-art.back::after, .card-art.face::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 38%, rgba(255, 240, 190, 0.32) 50%, transparent 62%); background-size: 280% 100%; background-position: 160% 0; mix-blend-mode: screen; animation: sheen 6s ease-in-out infinite; }
@@ -292,3 +296,19 @@ main { flex: 1; display: flex; flex-direction: column; gap: 28px; padding-bottom
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
 }
+
+/* reversed cards */
+.is-reversed { width: 100%; height: 100%; transform: rotate(180deg); }
+.reversed-tag { display: inline-block; margin-left: 8px; padding: 1px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 500; color: var(--accent); border: 1px solid var(--accent); vertical-align: middle; }
+.result-card figcaption .reversed-tag, .slot-label .reversed-tag { margin: 4px 0 0; display: block; width: fit-content; margin-inline: auto; }
+.verdict-big { text-align: center; margin: 6px 0 0; }
+.verdict-big strong { display: block; font-size: 56px; line-height: 1.15; font-weight: 700; color: var(--accent); }
+.verdict-big span { color: var(--ink-2); font-size: 15px; }
+.personal { margin-top: 18px; padding: 14px 18px; border-radius: 18px; background: var(--glass); border: 1px solid var(--glass-edge); text-align: center; color: var(--ink-2); font-size: 15px; }
+.personal b { display: block; color: var(--gold-text); font-size: 12.5px; letter-spacing: .04em; margin-bottom: 2px; }
+.lucky { font-size: 14px; color: var(--ink-2); text-align: center; }
+.lucky b { color: var(--gold-text); font-weight: 600; }
+.streak-note { text-align: center; margin-top: 8px; }
+.settings-form { display: flex; flex-direction: column; gap: 14px; }
+.settings-form label { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; font-weight: 500; }
+.settings-form input { padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--field); font-size: 16px; }

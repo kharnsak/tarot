@@ -16,6 +16,7 @@ import {
   Moon,
   PenLine,
   Search,
+  Settings,
   Share2,
   ShieldCheck,
   Sun,
@@ -25,15 +26,17 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ArtworkContext, CardArt } from "./art";
-import { cards, cardById, topics } from "./tarot";
+import { astroProfile } from "./astro";
+import { cards, cardById, entryById, topics } from "./tarot";
 import type { Card } from "./tarot";
-import { dayKey, loadJournal, saveJournal, streak, thaiDate } from "./storage";
-import type { Reading } from "./storage";
+import { dayKey, loadBirth, loadJournal, saveBirth, saveJournal, streakInfo, thaiDate } from "./storage";
+import type { Birth, Reading } from "./storage";
 import { createShareImage } from "./share";
 import type { ShareFormat } from "./share";
 import Dialog from "./Dialog";
 import ReadingFlow from "./ReadingFlow";
-import { chips, ui } from "./ui/copy";
+import { chipOf, ui } from "./ui/copy";
+import { chips } from "./ui/copy";
 import { applyTheme, readTheme } from "./ui/theme";
 import type { Theme } from "./ui/theme";
 
@@ -42,6 +45,7 @@ type Screen =
   | { kind: "journal" }
   | { kind: "library" }
   | { kind: "about" }
+  | { kind: "settings" }
   | { kind: "share"; reading: Reading }
   | null;
 
@@ -60,7 +64,7 @@ function greeting() {
   return h < 11 ? ui.greet.morning : h < 16 ? ui.greet.noon : h < 19 ? ui.greet.evening : ui.greet.night;
 }
 function topicLabel(r: Reading) {
-  return r.daily ? ui.journal.daily : (chips.find((c) => c.topic === r.topic)?.label ?? topics.find((t) => t.id === r.topic)?.label ?? "");
+  return r.daily ? ui.journal.daily : (chipOf(r).label || topics.find((t) => t.id === r.topic)?.label || "");
 }
 
 function Library() {
@@ -141,6 +145,39 @@ function Library() {
         </div>
       )}
     </div>
+  );
+}
+
+function SettingsForm({ birth, onSave, onClose }: { birth?: Birth; onSave: (b?: Birth) => void; onClose: () => void }) {
+  const [date, setDate] = useState(birth?.date ?? "");
+  const [time, setTime] = useState(birth?.time ?? "");
+  const valid = !date || !!astroProfile({ date });
+  return (
+    <form
+      className="settings-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!valid) return;
+        onSave(date ? { date, time: time || undefined } : undefined);
+        onClose();
+      }}
+    >
+      <h2>{ui.settings.title}</h2>
+      <p className="muted lead">{ui.settings.sub}</p>
+      <label>
+        {ui.settings.date}
+        <input type="date" name="birth-date" value={date} max={dayKey()} onChange={(e) => setDate(e.target.value)} />
+      </label>
+      <label>
+        {ui.settings.time}
+        <input type="time" name="birth-time" value={time} onChange={(e) => setTime(e.target.value)} />
+      </label>
+      <p className="fine">{ui.settings.hint}</p>
+      <button className="button primary full" type="submit">{ui.settings.save}</button>
+      {birth && (
+        <button className="text-button" type="button" onClick={() => { onSave(undefined); onClose(); }}>{ui.settings.clear}</button>
+      )}
+    </form>
   );
 }
 
@@ -244,7 +281,7 @@ function ShareView({ reading, onBack, notify }: { reading: Reading; onBack: () =
         <>
           <img className={`share-preview ${format}`} src={url} alt={ui.share.imgAlt} />
           <div className="share-actions">
-            <a className="button primary" href={url} download={name}><ArrowDownToLine size={18} />{ui.share.save}</a>
+            <a className="button primary" data-testid="save-png" href={url} download={name}><ArrowDownToLine size={18} />{ui.share.save}</a>
             {nativeShare && <button className="button secondary" onClick={share}><Share2 size={18} />{ui.share.send}</button>}
           </div>
           <p className="fine center">{format === "story" ? "1080 × 1920" : "1080 × 1350"} · {ui.share.private}</p>
@@ -265,8 +302,10 @@ export default function App() {
   const [today, setToday] = useState(dayKey);
   const [artwork, setArtwork] = useState<Record<string, string>>({});
   const daily = journal.readings.find((r) => r.daily && r.date === today);
-  const dailyCard = daily ? cardById.get(daily.cards[0]) : undefined;
-  const currentStreak = streak(journal.readings);
+  const dailyCard = daily ? entryById.get(daily.cards[0]) : undefined;
+  const streak = streakInfo(journal.readings);
+  const [birth, setBirth] = useState(loadBirth);
+  const lucky = birth ? astroProfile(birth)?.luckyColors ?? [] : [];
 
   useEffect(() => applyTheme(theme), [theme]);
   useEffect(() => {
@@ -307,6 +346,10 @@ export default function App() {
     setJournal({ readings: merged, storageUnavailable: !success });
     if (!success) setToast(ui.toast.noSave);
   }
+  function saveBirthDate(next?: Birth) {
+    if (!saveBirth(next)) setToast(ui.toast.noSave);
+    setBirth(next);
+  }
   function erase() {
     if (saveJournal([])) {
       setJournal({ readings: [], storageUnavailable: false });
@@ -314,7 +357,7 @@ export default function App() {
     } else setToast(ui.toast.eraseFail);
   }
   const title =
-    screen?.kind === "reading" ? "เปิดไพ่" : screen?.kind === "journal" ? ui.journal.title : screen?.kind === "library" ? ui.nav.library : screen?.kind === "share" ? ui.share.title : ui.about.title;
+    screen?.kind === "reading" ? "เปิดไพ่" : screen?.kind === "journal" ? ui.journal.title : screen?.kind === "settings" ? ui.settings.title : screen?.kind === "library" ? ui.nav.library : screen?.kind === "share" ? ui.share.title : ui.about.title;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -329,6 +372,7 @@ export default function App() {
             <nav className="header-actions" aria-label="เมนูหลัก">
               <button className="icon-button" onClick={() => setScreen({ kind: "library" })} aria-label={ui.nav.library}><BookOpen size={20} /></button>
               <button className="icon-button" onClick={() => setScreen({ kind: "journal" })} aria-label={ui.nav.journal}><History size={20} /></button>
+              <button className="icon-button" onClick={() => setScreen({ kind: "settings" })} aria-label={ui.nav.settings}><Settings size={20} /></button>
               <button className="icon-button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? ui.nav.light : ui.nav.dark}>
                 {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
               </button>
@@ -351,7 +395,8 @@ export default function App() {
                   <div className="daily-front"><CardArt card={dailyCard} decorative /></div>
                 </div>
               </button>
-              {dailyCard && <p className="quote small">{dailyCard.keyword}</p>}
+              {dailyCard && <p className="quote small">{dailyCard.daily || dailyCard.advice}</p>}
+              {dailyCard && lucky.length > 0 && <p className="lucky" data-testid="lucky"><b>{ui.home.luckyColors}</b> · {lucky.join(" · ")}</p>}
               <button className="button primary full" onClick={openDaily}>
                 {daily ? ui.home.dailyDone : ui.home.dailyCta}
                 <ArrowRight size={18} />
@@ -383,8 +428,9 @@ export default function App() {
 
             <div className="streak" title={ui.home.streakHint}>
               <Flame size={16} strokeWidth={1.8} />
-              <span>{ui.home.streak(currentStreak)}</span>
+              <span>{ui.home.streak(streak.current)}</span>
             </div>
+            {ui.home.streakNote(streak) && <p className="fine streak-note" data-testid="streak-note">{ui.home.streakNote(streak)}</p>}
           </main>
 
           <footer className="footer">
@@ -412,6 +458,7 @@ export default function App() {
               {screen.kind === "journal" && (
                 <Journal readings={journal.readings} onOpen={(r) => setScreen({ kind: "reading", existing: r })} onDelete={erase} storageUnavailable={journal.storageUnavailable} />
               )}
+              {screen.kind === "settings" && <SettingsForm birth={birth} onSave={saveBirthDate} onClose={() => setScreen(null)} />}
               {screen.kind === "library" && <Library />}
               {screen.kind === "share" && (
                 <ShareView reading={screen.reading} onBack={() => setScreen({ kind: "reading", existing: screen.reading })} notify={setToast} />

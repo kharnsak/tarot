@@ -1,4 +1,8 @@
+import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
+
+const chromium =
+  process.env.CHROMIUM_PATH || (existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : "/opt/pw-browsers/chromium");
 
 export default defineConfig({
   testDir: "./tests/browser",
@@ -8,7 +12,7 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:5173",
     ...devices["Desktop Chrome"],
     launchOptions: {
-      executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
+      executablePath: chromium,
       args: ["--no-sandbox"],
     },
     trace: "retain-on-failure",

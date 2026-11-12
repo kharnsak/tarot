@@ -9,11 +9,13 @@ export default function FlipCard({
   flipped,
   className = "",
   delay = 0,
+  reversed = false,
 }: {
   card: Card;
   flipped: boolean;
   className?: string;
   delay?: number;
+  reversed?: boolean;
 }) {
   const reduce = useReducedMotion();
   const [burst, setBurst] = useState(false);
@@ -53,7 +55,7 @@ export default function FlipCard({
             animate={{ opacity: flipped ? 1 : 0 }}
             transition={{ duration: 0.3, delay }}
           >
-            <CardArt card={card} />
+            <div className={reversed ? "is-reversed" : undefined}><CardArt card={card} /></div>
           </motion.div>
         </div>
       ) : (
@@ -67,7 +69,7 @@ export default function FlipCard({
             <CardArt decorative />
           </div>
           <div className="flip-face flip-front">
-            <CardArt card={card} />
+            <div className={reversed ? "is-reversed" : undefined}><CardArt card={card} /></div>
             {flipped && (
               <motion.span
                 className="flip-shine"
