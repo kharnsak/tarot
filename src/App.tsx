@@ -1,245 +1,229 @@
 import { useContext, useEffect, useState } from "react";
 import { motion, MotionConfig, useReducedMotion } from "motion/react";
 import {
-  ArrowDown,
   ArrowDownToLine,
   ArrowLeft,
   ArrowRight,
   BookOpen,
-  BriefcaseBusiness,
-  Check,
+  Briefcase,
   ChevronRight,
   CircleHelp,
   Flame,
   Heart,
   History,
   LoaderCircle,
-  Menu,
+  MessageCircleHeart,
   Moon,
+  PenLine,
   Search,
+  Settings,
   Share2,
-  ShieldCheck,
-  Sparkle,
   Sparkles,
+  ShieldCheck,
   Sun,
   Trash2,
+  Wallet,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ArtworkContext, CardArt } from "./art";
-import { cards, cardById, topics } from "./tarot";
-import type { Card, Topic } from "./tarot";
-import { dayKey, loadJournal, saveJournal, streak, thaiDate } from "./storage";
-import type { Reading } from "./storage";
+import { astroProfile } from "./astro";
+import { cardById, cardText, entryById, getDeck, topics } from "./tarot";
+import type { CardEntry } from "./tarot";
+import { dayKey, loadBirth, loadJournal, saveBirth, saveJournal, streakInfo, thaiDate } from "./storage";
+import type { Birth, Reading } from "./storage";
 import { createShareImage } from "./share";
+import type { ShareFormat } from "./share";
 import Dialog from "./Dialog";
 import ReadingFlow from "./ReadingFlow";
+import { chipOf, ui } from "./ui/copy";
+import { chips } from "./ui/copy";
+import { applyTheme, readTheme } from "./ui/theme";
+import Leaves from "./ui/Leaves";
+import HeroStage from "./ui/HeroStage";
+import { luckyFromCard, moonPath, moonPhase, thaiDay } from "./ui/today";
+import type { Theme } from "./ui/theme";
 
 type Screen =
-  | { kind: "reading"; daily?: boolean; topic?: Topic; existing?: Reading }
+  | { kind: "reading"; daily?: boolean; chip?: string; existing?: Reading }
   | { kind: "journal" }
   | { kind: "library" }
   | { kind: "about" }
+  | { kind: "settings" }
   | { kind: "share"; reading: Reading }
   | null;
-const topicIcons: Record<Topic, LucideIcon> = {
+
+const chipIcons: Record<string, LucideIcon> = {
   love: Heart,
-  work: BriefcaseBusiness,
-  general: Sparkles,
-  decision: CircleHelp,
+  mind: MessageCircleHeart,
+  work: Briefcase,
+  money: Wallet,
+  yesno: CircleHelp,
+  ask: PenLine,
 };
+const spring = { type: "spring", stiffness: 120, damping: 20 } as const;
+
+function greeting() {
+  const h = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false }).format(new Date())) % 24;
+  return h < 11 ? ui.greet.morning : h < 16 ? ui.greet.noon : h < 19 ? ui.greet.evening : ui.greet.night;
+}
+function topicLabel(r: Reading) {
+  return r.daily ? ui.journal.daily : (chipOf(r).label || topics.find((t) => t.id === r.topic)?.label || "");
+}
+
+const allCards = getDeck("full");
 
 function Library() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [selected, setSelected] = useState<Card>();
+  const [selected, setSelected] = useState<CardEntry>();
+  const [side, setSide] = useState<"up" | "rev">("up");
   const [backScroll, setBackScroll] = useState(0);
-  const results = cards.filter(
+  const q = search.toLowerCase().trim();
+  const results = allCards.filter(
     (c) =>
-      (filter === "all" ||
-        (filter === "major" ? c.arcana === "major" : c.suit === filter)) &&
-      `${c.name} ${c.thai} ${c.keyword}`
-        .toLowerCase()
-        .includes(search.toLowerCase().trim()),
+      (filter === "all" || (filter === "major" ? c.arcana === "major" : c.suit === filter)) &&
+      `${c.nameEn} ${c.nameTh} ${c.keywords.join(" ")}`.toLowerCase().includes(q),
   );
-  function view(card: Card) {
-    setBackScroll(document.querySelector(".dialog")?.scrollTop || 0);
+  const scroller = () => document.querySelector(".dialog-body");
+  function view(card: CardEntry) {
+    setBackScroll(scroller()?.scrollTop || 0);
     setSelected(card);
-    document.querySelector(".dialog")?.scrollTo({ top: 0 });
+    setSide("up");
+    scroller()?.scrollTo({ top: 0 });
   }
-  if (selected)
+  if (selected) {
+    const rev = side === "rev";
     return (
       <div className="library-detail">
         <button
-          className="text-button muted"
+          className="text-button"
           onClick={() => {
             setSelected(undefined);
-            requestAnimationFrame(() =>
-              document.querySelector(".dialog")?.scrollTo({ top: backScroll }),
-            );
+            requestAnimationFrame(() => scroller()?.scrollTo({ top: backScroll }));
           }}
         >
           <ArrowLeft size={16} />
-          กลับไปที่ห้องสมุดไพ่
+          {ui.library.back}
         </button>
-        <div className="library-detail-intro">
-          <CardArt card={selected} />
-          <div>
-            <span className="eyebrow">
-              {selected.arcana === "major" ? "MAJOR ARCANA" : "MINOR ARCANA"}
-            </span>
-            <h2>{selected.thai}</h2>
-            <span className="serif english-title">{selected.name}</span>
-            <p className="gold">{selected.keyword}</p>
+        <div className="detail-grid">
+          <div className="detail-hero">
+            <CardArt card={selected} />
+            <span className="en">{selected.nameEn}</span>
+            <h2>{selected.nameTh}</h2>
+            <div className="kw">{selected.keywords.map((k) => <i key={k}>{k}</i>)}</div>
+          </div>
+          <div className="detail-body">
+            <div className="segment" role="group" aria-label="ด้านของไพ่">
+              <button className={!rev ? "on" : ""} aria-pressed={!rev} onClick={() => setSide("up")}>ไพ่หัวตั้ง</button>
+              <button className={rev ? "on" : ""} aria-pressed={rev} onClick={() => setSide("rev")}>ไพ่กลับหัว</button>
+            </div>
+            <section><h3>{ui.library.message}</h3><p>{cardText(selected, rev, "core")}</p></section>
+            <section><h3>{ui.library.love}</h3><p>{cardText(selected, rev, "love")}</p></section>
+            <section><h3>{ui.library.work}</h3><p>{cardText(selected, rev, "work")}</p></section>
+            <section><h3>การเงิน</h3><p>{cardText(selected, rev, "money")}</p></section>
+            <section className="note"><p>{cardText(selected, rev, "advice")}</p></section>
+            <p className="fine">{ui.library.note}</p>
           </div>
         </div>
-        <section>
-          <h3>ข้อความจากไพ่</h3>
-          <p>{selected.message}</p>
-        </section>
-        <section>
-          <h3>ความรักและความสัมพันธ์</h3>
-          <p>{selected.love}</p>
-        </section>
-        <section>
-          <h3>การงานและการเงิน</h3>
-          <p>{selected.work}</p>
-        </section>
-        <div className="gentle-note">
-          <Sparkles size={18} />
-          <p>{selected.advice}</p>
-        </div>
-        <p className="fine-print">
-          ความหมายในรูปแบบไพ่ตั้งตรง สำหรับการเรียนรู้และไตร่ตรอง
-          ภาพประกอบเป็นภาพชั่วคราวของจันทร์ใจ
-        </p>
       </div>
     );
+  }
   return (
     <div className="library">
-      <span className="eyebrow">GET TO KNOW YOUR CARDS</span>
-      <h2>ไพ่แต่ละใบ มีเรื่องเล่า</h2>
-      <p className="muted">รู้จักความหมายไพ่ทั้ง 78 ใบ ในภาษาที่ใกล้หัวใจ</p>
+      <h2>{ui.library.title}</h2>
+      <p className="muted lead">{ui.library.sub}</p>
       <label className="search-field">
         <Search size={18} />
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="ค้นหาชื่อไพ่ หรือสิ่งที่อยากรู้"
-          aria-label="ค้นหาไพ่"
-        />
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={ui.library.search} aria-label={ui.library.searchAria} />
       </label>
-      <div className="library-tabs" aria-label="หมวดไพ่">
-        {[
-          ["all", "ทั้งหมด"],
-          ["major", "ไพ่หลัก 22 ใบ"],
-          ["cups", "ถ้วย"],
-          ["wands", "ไม้เท้า"],
-          ["swords", "ดาบ"],
-          ["pentacles", "เหรียญ"],
-        ].map(([id, label]) => (
-          <button
-            className={filter === id ? "selected" : ""}
-            onClick={() => setFilter(id)}
-            key={id}
-            aria-pressed={filter === id}
-          >
+      <div className="tabs" aria-label="หมวดไพ่">
+        {ui.library.tabs.map(([id, label]) => (
+          <button className={filter === id ? "on" : ""} onClick={() => setFilter(id)} key={id} aria-pressed={filter === id}>
             {label}
           </button>
         ))}
       </div>
-      <p className="search-count" aria-live="polite">
-        พบ {results.length} ใบ
-      </p>
+      <p className="fine" aria-live="polite">{ui.library.count(results.length)}</p>
       <div className="library-grid">
         {results.map((card) => (
           <button key={card.id} onClick={() => view(card)}>
             <CardArt card={card} decorative />
-            <h3>{card.thai}</h3>
-            <span>{card.name}</span>
+            <h3>{card.nameTh}</h3>
+            <span>{card.nameEn}</span>
           </button>
         ))}
       </div>
       {!results.length && (
-        <div className="empty-state">
-          <Search />
-          <h3>ยังไม่พบไพ่ที่ค้นหา</h3>
-          <p>ลองค้นหาชื่อภาษาไทย ภาษาอังกฤษ หรือเลือกหมวดใหม่</p>
-          <button
-            className="button secondary"
-            onClick={() => {
-              setSearch("");
-              setFilter("all");
-            }}
-          >
-            ดูไพ่ทั้งหมด
+        <div className="empty">
+          <Search size={28} strokeWidth={1.2} />
+          <h3>{ui.library.empty}</h3>
+          <p className="muted">{ui.library.emptyHint}</p>
+          <button className="button secondary" onClick={() => { setSearch(""); setFilter("all"); }}>
+            {ui.library.all}
           </button>
         </div>
       )}
     </div>
   );
 }
-function Journal({
-  readings,
-  onOpen,
-  onDelete,
-  storageUnavailable,
-}: {
-  readings: Reading[];
-  onOpen: (r: Reading) => void;
-  onDelete: () => void;
-  storageUnavailable: boolean;
-}) {
+
+function SettingsForm({ birth, onSave, onClose }: { birth?: Birth; onSave: (b?: Birth) => void; onClose: () => void }) {
+  const [date, setDate] = useState(birth?.date ?? "");
+  const [time, setTime] = useState(birth?.time ?? "");
+  const valid = !date || !!astroProfile({ date });
+  return (
+    <form
+      className="settings-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!valid) return;
+        onSave(date ? { date, time: time || undefined } : undefined);
+        onClose();
+      }}
+    >
+      <h2>{ui.settings.title}</h2>
+      <p className="muted lead">{ui.settings.sub}</p>
+      <label>
+        {ui.settings.date}
+        <input type="date" name="birth-date" value={date} max={dayKey()} onChange={(e) => setDate(e.target.value)} />
+      </label>
+      <label>
+        {ui.settings.time}
+        <input type="time" name="birth-time" value={time} onChange={(e) => setTime(e.target.value)} />
+      </label>
+      <p className="fine">{ui.settings.hint}</p>
+      <button className="button primary full" type="submit">{ui.settings.save}</button>
+      {birth && (
+        <button className="text-button" type="button" onClick={() => { onSave(undefined); onClose(); }}>{ui.settings.clear}</button>
+      )}
+    </form>
+  );
+}
+
+function Journal({ readings, onOpen, onDelete, storageUnavailable }: { readings: Reading[]; onOpen: (r: Reading) => void; onDelete: () => void; storageUnavailable: boolean }) {
   const [confirm, setConfirm] = useState(false);
   return (
     <div className="journal">
-      <span className="eyebrow">YOUR LITTLE BOOK OF REFLECTIONS</span>
-      <h2>บันทึกของใจ</h2>
-      <p className="muted">กลับมาอ่านวันที่ผ่านมา แล้วเห็นตัวเองในมุมใหม่</p>
-      <div className="privacy-note">
-        <ShieldCheck size={17} />
-        <span>
-          {storageUnavailable
-            ? "เบราว์เซอร์นี้บันทึกข้อมูลไม่ได้ ประวัติจะอยู่ชั่วคราวจนกว่าจะปิดหน้า"
-            : "เก็บเฉพาะในเบราว์เซอร์นี้ ไม่ซิงก์ข้ามเครื่อง การล้างข้อมูลเว็บไซต์จะลบประวัติด้วย"}
-        </span>
-      </div>
+      <h2>{ui.journal.title}</h2>
+      <p className="muted lead">{ui.journal.sub}</p>
+      <p className="privacy"><ShieldCheck size={15} />{storageUnavailable ? ui.journal.noStorage : ui.journal.local}</p>
       {!readings.length ? (
-        <div className="empty-state">
-          <BookOpen size={34} strokeWidth={1} />
-          <h3>หน้ากระดาษแรกกำลังรอคุณ</h3>
-          <p>
-            เมื่อเปิดไพ่ ข้อความและไพ่ของคุณ
-            <br />
-            จะกลับมาอ่านได้ที่นี่
-          </p>
+        <div className="empty">
+          <BookOpen size={30} strokeWidth={1.2} />
+          <h3>{ui.journal.emptyTitle}</h3>
+          <p className="muted">{ui.journal.emptyText}</p>
         </div>
       ) : (
         <>
           <div className="journal-list">
             {readings.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => onOpen(r)}
-                className="journal-entry"
-              >
+              <button key={r.id} onClick={() => onOpen(r)} className="journal-entry">
                 <CardArt card={cardById.get(r.cards[0])} decorative />
-                <span className="journal-entry-copy">
-                  <small>
-                    {thaiDate(new Date(r.createdAt), true)} ·{" "}
-                    {r.daily
-                      ? "ไพ่ประจำวัน"
-                      : topics.find((t) => t.id === r.topic)?.label}
-                  </small>
-                  <b>
-                    {r.question ||
-                      r.cards.map((id) => cardById.get(id)!.thai).join(" · ")}
-                  </b>
-                  <span>
-                    {r.cards.length} ใบ · กลับมาอ่านข้อความ
-                    <ArrowRight size={13} />
-                  </span>
+                <span className="copy">
+                  <small>{thaiDate(new Date(r.createdAt), true)} · {topicLabel(r)}</small>
+                  <b>{r.question || r.cards.map((id) => cardById.get(id)!.thai).join(" · ")}</b>
+                  <span>{ui.journal.cardsCount(r.cards.length)}</span>
                 </span>
                 <ChevronRight size={18} />
               </button>
@@ -248,35 +232,12 @@ function Journal({
           <div className="delete-area">
             {confirm ? (
               <>
-                <p>
-                  ลบประวัติทั้งหมด {readings.length} รายการจากเบราว์เซอร์นี้?
-                  <br />
-                  <small>ลบแล้วเรียกคืนไม่ได้</small>
-                </p>
-                <button
-                  className="button danger"
-                  onClick={() => {
-                    onDelete();
-                    setConfirm(false);
-                  }}
-                >
-                  ยืนยันลบประวัติ
-                </button>
-                <button
-                  className="text-button muted"
-                  onClick={() => setConfirm(false)}
-                >
-                  เก็บบันทึกไว้
-                </button>
+                <p>{ui.journal.delConfirm(readings.length)}<br /><small>{ui.journal.delWarn}</small></p>
+                <button className="button danger" onClick={() => { onDelete(); setConfirm(false); }}>{ui.journal.delYes}</button>
+                <button className="text-button" onClick={() => setConfirm(false)}>{ui.journal.delNo}</button>
               </>
             ) : (
-              <button
-                className="text-button muted"
-                onClick={() => setConfirm(true)}
-              >
-                <Trash2 size={14} />
-                ลบประวัติในเครื่องนี้
-              </button>
+              <button className="text-button" onClick={() => setConfirm(true)}><Trash2 size={14} />{ui.journal.del}</button>
             )}
           </div>
         </>
@@ -284,23 +245,20 @@ function Journal({
     </div>
   );
 }
-function ShareView({
-  reading,
-  onBack,
-  notify,
-}: {
-  reading: Reading;
-  onBack: () => void;
-  notify: (text: string) => void;
-}) {
+
+function ShareView({ reading, onBack, notify }: { reading: Reading; onBack: () => void; notify: (text: string) => void }) {
   const artwork = useContext(ArtworkContext);
+  const [format, setFormat] = useState<ShareFormat>("story");
   const [blob, setBlob] = useState<Blob>();
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
     let objectUrl = "";
-    createShareImage(reading, artwork)
+    setBlob(undefined);
+    setUrl("");
+    setError("");
+    createShareImage(reading, artwork, format)
       .then((data) => {
         if (active) {
           objectUrl = URL.createObjectURL(data);
@@ -308,81 +266,48 @@ function ShareView({
           setUrl(objectUrl);
         }
       })
-      .catch(() => {
-        if (active)
-          setError(
-            "สร้างภาพไม่สำเร็จ ลองเปิดด้วยเบราว์เซอร์รุ่นล่าสุด แล้วลองใหม่อีกครั้งนะ",
-          );
-      });
+      .catch(() => active && setError(ui.share.error));
     return () => {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [reading, artwork]);
-  const file = blob
-    ? new File([blob], `chanjai-${reading.date}.png`, { type: "image/png" })
-    : undefined;
+  }, [reading, artwork, format]);
+  const name = `chanjai-${reading.date}-${format}.png`;
+  const file = blob ? new File([blob], name, { type: "image/png" }) : undefined;
   const nativeShare = !!(file && navigator.canShare?.({ files: [file] }));
   async function share() {
     if (!file) return;
     try {
-      await navigator.share({ files: [file], title: "ข้อความจากไพ่จันทร์ใจ" });
+      await navigator.share({ files: [file], title: ui.share.sheetTitle });
     } catch (e) {
-      if (!(e instanceof Error && e.name === "AbortError"))
-        notify("แชร์ไม่สำเร็จ บันทึกภาพแล้วแชร์จากแกลเลอรีได้เลยนะ");
+      if (!(e instanceof Error && e.name === "AbortError")) notify(ui.share.shareError);
     }
   }
   return (
     <div className="share-view">
-      <button className="text-button muted" onClick={onBack}>
-        <ArrowLeft size={16} />
-        กลับไปอ่านข้อความ
-      </button>
-      <span className="eyebrow">A LITTLE MAGIC TO KEEP</span>
-      <h2>เก็บข้อความดี ๆ ไว้ใกล้ใจ</h2>
-      <p className="muted">บันทึกลงเครื่อง หรือส่งต่อพลังดี ๆ ให้ใครสักคน</p>
-      {error ? (
-        <div className="empty-state">
-          <p role="alert">{error}</p>
-          <button className="button secondary" onClick={onBack}>
-            กลับไปที่ผลไพ่
+      <button className="text-button" onClick={onBack}><ArrowLeft size={16} />{ui.share.back}</button>
+      <h2>{ui.share.title}</h2>
+      <p className="muted lead">{ui.share.sub}</p>
+      <div className="segment" role="group" aria-label="ขนาดภาพ">
+        {(["story", "feed"] as const).map((f) => (
+          <button key={f} className={format === f ? "on" : ""} aria-pressed={format === f} onClick={() => setFormat(f)}>
+            {f === "story" ? ui.share.story : ui.share.feed}
           </button>
-        </div>
+        ))}
+      </div>
+      {error ? (
+        <div className="empty"><p role="alert">{error}</p></div>
       ) : url ? (
         <>
-          <img
-            className="share-preview"
-            src={url}
-            alt="ภาพผลไพ่ของคุณสำหรับแชร์"
-          />
+          <img className={`share-preview ${format}`} src={url} alt={ui.share.imgAlt} />
           <div className="share-actions">
-            <a
-              className="button primary"
-              href={url}
-              download={`chanjai-${reading.date}.png`}
-            >
-              <ArrowDownToLine size={17} />
-              บันทึกภาพ PNG
-            </a>
-            {nativeShare && (
-              <button className="button secondary" onClick={share}>
-                <Share2 size={17} />
-                แชร์ภาพ
-              </button>
-            )}
+            <a className="button primary" data-testid="save-png" href={url} download={name}><ArrowDownToLine size={18} />{ui.share.save}</a>
+            {nativeShare && <button className="button secondary" onClick={share}><Share2 size={18} />{ui.share.send}</button>}
           </div>
-          <p className="fine-print">
-            ภาพขนาด 1080 × 1440 · ไม่แสดงคำถามส่วนตัวของคุณ
-            <br />
-            {!nativeShare &&
-              "บันทึกภาพ แล้วเลือกแชร์ผ่าน LINE, Instagram หรือแอปที่คุณใช้ได้เลย"}
-          </p>
+          <p className="fine center">{format === "story" ? "1080 × 1920" : "1080 × 1350"} · {ui.share.private}</p>
         </>
       ) : (
-        <div className="share-loading" role="status">
-          <LoaderCircle className="spin" size={28} />
-          <p>กำลังจัดข้อความให้เป็นภาพสวย ๆ…</p>
-        </div>
+        <div className="share-loading" role="status"><LoaderCircle className="spin" size={26} /><p className="muted">{ui.share.loading}</p></div>
       )}
     </div>
   );
@@ -390,22 +315,27 @@ function ShareView({
 
 export default function App() {
   const reduce = useReducedMotion();
+  const [theme, setTheme] = useState<Theme>(readTheme);
   const [journal, setJournal] = useState(loadJournal);
   const [screen, setScreen] = useState<Screen>(null);
-  const [menu, setMenu] = useState(false);
   const [toast, setToast] = useState("");
   const [today, setToday] = useState(dayKey);
   const [artwork, setArtwork] = useState<Record<string, string>>({});
   const daily = journal.readings.find((r) => r.daily && r.date === today);
-  const currentStreak = streak(journal.readings);
+  const dailyCard = daily ? entryById.get(daily.cards[0]) : undefined;
+  const streak = streakInfo(journal.readings);
+  const [birth, setBirth] = useState(loadBirth);
+  const luckyToday = dailyCard ? luckyFromCard(dailyCard) : undefined;
+  const moon = moonPhase();
+  const dayInfo = thaiDay();
+  const lucky = birth ? astroProfile(birth)?.luckyColors ?? [] : [];
+
+  useEffect(() => applyTheme(theme), [theme]);
   useEffect(() => {
     const timer = window.setInterval(() => setToday(dayKey()), 30000);
     const sync = () => setJournal(loadJournal());
     window.addEventListener("storage", sync);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("storage", sync);
-    };
+    return () => { clearInterval(timer); window.removeEventListener("storage", sync); };
   }, []);
   useEffect(() => {
     if (!toast) return;
@@ -419,447 +349,161 @@ export default function App() {
         if (!data || typeof data !== "object" || Array.isArray(data)) return;
         const safe: Record<string, string> = {};
         for (const [id, path] of Object.entries(data)) {
-          if (
-            cardById.has(id) &&
-            typeof path === "string" &&
-            path.startsWith("/cards/") &&
-            !path.includes("..")
-          )
+          if (cardById.has(id) && typeof path === "string" && path.startsWith("/cards/") && !path.includes(".."))
             safe[id] = `${import.meta.env.BASE_URL}${path.slice(1)}`;
         }
         setArtwork(safe);
       })
       .catch(() => {});
   }, []);
+
   function openDaily() {
-    setMenu(false);
-    setScreen({
-      kind: "reading",
-      daily: true,
-      existing: journal.readings.find((r) => r.daily && r.date === dayKey()),
-    });
-  }
-  function openScreen(next: Screen) {
-    setMenu(false);
-    setScreen(next);
+    setScreen({ kind: "reading", daily: true, existing: journal.readings.find((r) => r.daily && r.date === dayKey()) });
   }
   function save(reading: Reading) {
     const fresh = loadJournal();
     const merged = [reading, ...fresh.readings, ...journal.readings]
       .filter((r, i, all) => all.findIndex((x) => x.id === r.id) === i)
-      .slice(0, 150);
+      .slice(0, 100);
     const success = saveJournal(merged);
     setJournal({ readings: merged, storageUnavailable: !success });
-    if (!success)
-      setToast("เบราว์เซอร์นี้บันทึกไม่ได้ เก็บผลเป็นภาพไว้ก่อนปิดหน้านะ");
+    if (!success) setToast(ui.toast.noSave);
+  }
+  function saveBirthDate(next?: Birth) {
+    if (!saveBirth(next)) setToast(ui.toast.noSave);
+    setBirth(next);
   }
   function erase() {
     if (saveJournal([])) {
       setJournal({ readings: [], storageUnavailable: false });
-      setToast("ลบประวัติในเบราว์เซอร์นี้แล้ว");
-    } else
-      setToast("ยังลบข้อมูลไม่ได้ ลองตรวจสอบสิทธิ์จัดเก็บข้อมูลของเบราว์เซอร์");
+      setToast(ui.toast.erased);
+    } else setToast(ui.toast.eraseFail);
   }
+  const title =
+    screen?.kind === "reading" ? "เปิดไพ่" : screen?.kind === "journal" ? ui.journal.title : screen?.kind === "settings" ? ui.settings.title : screen?.kind === "library" ? ui.nav.library : screen?.kind === "share" ? ui.share.title : ui.about.title;
+
   return (
     <MotionConfig reducedMotion="user">
       <ArtworkContext.Provider value={artwork}>
-        <div className="site-shell">
-          <div className="ambient ambient-one" aria-hidden="true" />
-          <div className="ambient ambient-two" aria-hidden="true" />
-          <div className="noise" aria-hidden="true" />
-          <a href="#main-content" className="skip-link">
-            ข้ามไปยังเนื้อหา
-          </a>
-          <header className="header page-width">
-            <a href="#" className="brand" aria-label="จันทร์ใจ หน้าหลัก">
-              <span className="brand-mark">
-                <Moon size={29} strokeWidth={1.2} />
-                <Sparkle size={11} />
-              </span>
-              <span>
-                จันทร์ใจ<small>CHANJAI</small>
-              </span>
+        <Leaves />
+        <div className="shell">
+          <a href="#main-content" className="skip-link">{ui.skip}</a>
+          <header className="header">
+            <a href="#" className="brand" aria-label={`${ui.brand} หน้าหลัก`}>
+              <Moon size={20} strokeWidth={1.6} />
+              <span>{ui.brand}</span>
             </a>
-            <nav
-              className={`nav ${menu ? "mobile-open" : ""}`}
-              aria-label="เมนูหลัก"
-            >
-              <button className="nav-link nav-active" onClick={openDaily}>
-                ไพ่ประจำวัน
+            <nav className="header-actions" aria-label="เมนูหลัก">
+              <button className="icon-button" onClick={() => setScreen({ kind: "library" })} aria-label={ui.nav.library}><BookOpen size={20} /></button>
+              <button className="icon-button" onClick={() => setScreen({ kind: "journal" })} aria-label={ui.nav.journal}><History size={20} /></button>
+              <button className="icon-button" onClick={() => setScreen({ kind: "settings" })} aria-label={ui.nav.settings}><Settings size={20} /></button>
+              <button className="icon-button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? ui.nav.light : ui.nav.dark}>
+                {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
               </button>
-              <button
-                className="nav-link"
-                onClick={() => openScreen({ kind: "library" })}
-              >
-                ห้องสมุดไพ่
-              </button>
-              <button
-                className="nav-link"
-                onClick={() => openScreen({ kind: "journal" })}
-              >
-                บันทึกของใจ
-              </button>
-              <a
-                href="#how-it-works"
-                className="nav-link"
-                onClick={() => setMenu(false)}
-              >
-                รู้จักจันทร์ใจ
-              </a>
             </nav>
-            <button
-              className="button header-cta"
-              onClick={() => openScreen({ kind: "reading" })}
-            >
-              <Sparkles size={15} />
-              เปิดไพ่ฟรี <ArrowUpRight />
-            </button>
-            <button
-              className="icon-button mobile-toggle"
-              onClick={() => setMenu(!menu)}
-              aria-expanded={menu}
-              aria-label={menu ? "ปิดเมนู" : "เปิดเมนู"}
-            >
-              {menu ? <X size={23} /> : <Menu size={23} />}
-            </button>
           </header>
+
           <main id="main-content">
-            <section className="hero page-width" aria-labelledby="hero-heading">
-              <motion.div
-                className="hero-copy"
-                initial={reduce ? false : { opacity: 0, y: 22 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8 }}
-              >
-                <div className="hero-kicker">
-                  <span />
-                  <span>พื้นที่เล็ก ๆ ให้ใจได้พัก</span>
-                </div>
-                <h1 id="hero-heading">
-                  ให้ไพ่กระซิบ
-                  <br />
-                  <span>สิ่งที่ใจอยากรู้</span>
-                  <Sparkle className="heading-star" size={27} strokeWidth={1} />
-                </h1>
-                <p className="hero-description">
-                  บางคำตอบ ไม่ต้องรีบหา
-                  <br />
-                  แค่ลองหยุดฟังเสียงข้างใน ให้ไพ่เป็นเพื่อนคุยกับใจ
-                </p>
-                <div className="hero-actions">
-                  <button
-                    className="button primary hero-cta"
-                    onClick={openDaily}
-                  >
-                    <Moon size={18} strokeWidth={1.5} />
-                    {daily ? "อ่านข้อความของวันนี้" : "เปิดไพ่ประจำวัน"}
+            <section className="hero">
+              <HeroStage />
+              <div className="hero-copy">
+                <motion.div className="hero-title" initial={reduce ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+                  <p className="eyebrow">{greeting()} · {thaiDate(new Date(), true)}</p>
+                  <h1>{ui.home.dailyTitle}</h1>
+                  <p className="lead">{ui.home.dailySub}</p>
+                </motion.div>
+
+                <motion.div className="daily-card" aria-label={ui.home.dailyTitle} initial={reduce ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.08 }}>
+                  {dailyCard && <p className="quote small">{dailyCard.daily || dailyCard.advice}</p>}
+                  {dailyCard && lucky.length > 0 && <p className="lucky" data-testid="lucky"><b>{ui.home.luckyColors}</b> · {lucky.join(" · ")}</p>}
+                  <button className="button primary full" onClick={openDaily}>
+                    {daily ? ui.home.dailyDone : ui.home.dailyCta}
                     <ArrowRight size={18} />
                   </button>
-                  <a href="#readings" className="hero-secondary">
-                    เลือกเรื่องที่อยู่ในใจ
-                    <ArrowDown size={15} />
-                  </a>
-                </div>
-                <div className="hero-reassurance">
-                  <span>
-                    <Check size={13} />
-                    ฟรีทุกวัน
-                  </span>
-                  <i />
-                  <span>ไม่ต้องสมัครสมาชิก</span>
-                  <i />
-                  <span>เก็บเป็นภาพได้</span>
-                </div>
-              </motion.div>
-              <motion.div
-                className="hero-visual"
-                aria-hidden="true"
-                initial={reduce ? false : { opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1.1, delay: 0.1 }}
-              >
-                <div className="celestial-disc">
-                  <div className="orbit orbit-one" />
-                  <div className="orbit orbit-two" />
-                  <div className="orbit-cross" />
-                  <span className="orbit-label">AS ABOVE, SO WITHIN</span>
-                  <div className="moon-halo" />
-                  <span className="orbital-dot dot-one" />
-                  <span className="orbital-dot dot-two" />
-                </div>
-                <Sparkle
-                  className="visual-star star-a"
-                  size={32}
-                  strokeWidth={0.7}
-                />
-                <Sparkle
-                  className="visual-star star-b"
-                  size={18}
-                  strokeWidth={1}
-                />
-                <Sparkle
-                  className="visual-star star-c"
-                  size={12}
-                  strokeWidth={1}
-                />
-                <div className="hero-card hero-card-back-left">
-                  <CardArt decorative />
-                </div>
-                <div className="hero-card hero-card-back-right">
-                  <CardArt decorative />
-                </div>
-                <div className="hero-card hero-card-left">
-                  <CardArt card={cards[18]} decorative />
-                </div>
-                <div className="hero-card hero-card-right">
-                  <CardArt card={cards[17]} decorative />
-                </div>
-                <div className="hero-card hero-card-main">
-                  <CardArt card={cards[19]} decorative />
-                </div>
-                <div className="floating-tag">
-                  <Sparkles size={14} />
-                  <span>a little magic, just for you</span>
-                </div>
-                <span className="art-coordinate">
-                  19° THE SUN
-                  <br />
-                  <span>YOUR LIGHT IS STILL HERE</span>
-                </span>
-              </motion.div>
-            </section>
-            <div className="page-width">
-              <section
-                className="daily-banner glass"
-                aria-labelledby="daily-heading"
-              >
-                <div className="daily-banner-icon">
-                  <Moon size={26} strokeWidth={1.2} />
-                  <Sparkle size={10} />
-                </div>
-                <div className="daily-banner-copy">
-                  <div className="daily-banner-top">
-                    <span className="eyebrow">YOUR DAILY LITTLE RITUAL</span>
-                    <span className="today-date">
-                      {thaiDate(new Date(), true)}
-                    </span>
+                </motion.div>
+
+                <section className="topics" aria-labelledby="topics-heading">
+                  <h2 id="topics-heading">{ui.home.topicsTitle}</h2>
+                  <div className="chip-grid">
+                    {chips.map((c, i) => {
+                      const Icon = chipIcons[c.id];
+                      return (
+                        <motion.button
+                          key={c.id}
+                          className="chip"
+                          onClick={() => setScreen({ kind: "reading", chip: c.id })}
+                          initial={reduce ? false : { opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ ...spring, delay: 0.16 + i * 0.04 }}
+                        >
+                          <Icon size={24} strokeWidth={1.5} />
+                          <span>{c.label}</span>
+                        </motion.button>
+                      );
+                    })}
                   </div>
-                  <h2 id="daily-heading">
-                    {daily
-                      ? "วันนี้ คุณได้ให้เวลากับใจแล้ว"
-                      : "ไพ่วันนี้ของคุณ รออยู่ตรงนี้"}{" "}
-                    <span className="free-badge">ฟรี 1 ใบ</span>
-                  </h2>
-                  <p>
-                    {daily
-                      ? `ข้อความจากไพ่${cardById.get(daily.cards[0])!.thai} กลับมาอ่านได้เสมอ`
-                      : "เริ่มต้นวันด้วยข้อความเล็ก ๆ ที่อาจทำให้คุณยิ้มได้"}
-                  </p>
-                </div>
-                <div
-                  className="streak-chip"
-                  title="นับวันที่เปิดไพ่ประจำวันต่อเนื่อง"
-                >
-                  <Flame size={18} />
-                  <span>
-                    {currentStreak > 0 ? (
-                      <>
-                        <b>{currentStreak} วัน</b> ที่ดูแลใจ
-                      </>
-                    ) : (
-                      <>เริ่มวันแรกด้วยกัน</>
-                    )}
-                  </span>
-                </div>
-                <button className="daily-banner-action" onClick={openDaily}>
-                  {daily ? "อ่านอีกครั้ง" : "รับข้อความวันนี้"}
-                  <ArrowRight size={18} />
-                </button>
-              </section>
-            </div>
-            <section
-              id="readings"
-              className="readings-section page-width"
-              aria-labelledby="readings-heading"
-            >
-              <div className="section-top">
-                <div>
-                  <span className="eyebrow">WHAT'S ON YOUR MIND?</span>
-                  <h2 id="readings-heading">วันนี้ อยากคุยเรื่องอะไร</h2>
-                </div>
-                <p>
-                  ให้ไพ่ช่วยส่องอีกมุม
-                  <br />
-                  <span>แล้วให้หัวใจคุณเป็นคนเลือกทาง</span>
-                </p>
-              </div>
-              <div className="topic-grid">
-                {topics.map((topic, i) => {
-                  const Icon = topicIcons[topic.id];
-                  return (
-                    <motion.button
-                      className={`topic-card topic-${topic.id}`}
-                      onClick={() =>
-                        openScreen({ kind: "reading", topic: topic.id })
-                      }
-                      key={topic.id}
-                      initial={reduce ? false : { y: 20 }}
-                      whileInView={{ y: 0 }}
-                      viewport={{ once: true, amount: 0.2 }}
-                      transition={{ duration: 0.45, delay: i * 0.07 }}
-                    >
-                      <div className="topic-card-top">
-                        <span className="topic-icon">
-                          <Icon size={23} strokeWidth={1.3} />
-                        </span>
-                        <span className="topic-number">0{i + 1}</span>
-                      </div>
-                      <h3>{topic.label}</h3>
-                      <p>{topic.subtitle}</p>
-                      <div className="topic-card-bottom">
-                        <span>
-                          {topic.id === "decision"
-                            ? "1 ใบ · มุมมองก่อนตัดสินใจ"
-                            : "เลือกได้ 1 หรือ 3 ใบ"}
-                        </span>
-                        <ArrowRight size={18} />
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-              <div className="readings-footnote">
-                <ShieldCheck size={14} />
-                <span>
-                  พื้นที่ปลอดภัยสำหรับการสำรวจใจ ไม่มีคำตอบไหนมาตัดสินคุณ
-                </span>
+                </section>
               </div>
             </section>
-            <section
-              id="how-it-works"
-              className="how-section page-width"
-              aria-labelledby="how-heading"
-            >
-              <div className="how-intro">
-                <span className="eyebrow">SLOW DOWN. TUNE IN.</span>
-                <h2 id="how-heading">
-                  ไม่ต้องรู้อนาคตทั้งหมด
-                  <br />
-                  <span>แค่เข้าใจตัวเองอีกนิดก็พอ</span>
-                </h2>
-                <p>
-                  จันทร์ใจเชื่อว่าไพ่เป็นกระจกบานเล็ก
-                  <br />
-                  ที่ช่วยให้คุณเห็นใจตัวเองชัดขึ้น
-                  <br />
-                  ไม่ใช่สิ่งที่กำหนดว่าชีวิตคุณต้องเป็นอย่างไร
-                </p>
-                <button
-                  className="text-button gold"
-                  onClick={() => openScreen({ kind: "about" })}
-                >
-                  รู้จักพื้นที่ของเรา
-                  <ArrowRight size={16} />
-                </button>
-              </div>
-              <div className="how-steps">
-                {[
-                  {
-                    icon: Moon,
-                    title: "พักใจ แล้วตั้งคำถาม",
-                    text: "เลือกเรื่องที่อยากคุย หรือแค่เปิดใจรับข้อความของวัน",
-                  },
-                  {
-                    icon: Sparkles,
-                    title: "ให้ความรู้สึกพาคุณเลือก",
-                    text: "หายใจช้า ๆ สับไพ่ แล้วเลือกใบที่รู้สึกเชื่อมโยง",
-                  },
-                  {
-                    icon: Heart,
-                    title: "เก็บสิ่งที่ดีกับใจไว้",
-                    text: "อ่านข้อความ ทบทวนตัวเอง แล้วแชร์เป็นภาพสวย ๆ",
-                  },
-                ].map((item, i) => (
-                  <div className="how-step" key={i}>
-                    <span className="step-icon">
-                      <item.icon size={20} strokeWidth={1.2} />
-                    </span>
+
+            <section className="today" aria-labelledby="today-heading">
+              <h2 id="today-heading">วันนี้ของเธอ</h2>
+              <div className="today-grid">
+                <div className="tile" data-testid="moon">
+                  <svg className="glyph" viewBox="0 0 56 56" aria-hidden="true">
+                    <circle cx="28" cy="28" r="22" fill="#2a2150" />
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#c9a24b" strokeWidth="1" />
+                    <path d={moonPath(moon.p, 22, 28, 28)} fill="#e9c96a" />
+                  </svg>
+                  <div><small>พระจันทร์วันนี้</small><b>{moon.name}</b><span className="sub">สว่าง {Math.round(moon.lit * 100)}%</span></div>
+                </div>
+                <div className="tile" data-testid="day-colour">
+                  <div className="glyph"><span className="swatch" style={{ background: dayInfo.hex }} /></div>
+                  <div><small>{dayInfo.day}</small><b>{dayInfo.colour}ประจำวัน</b><span className="sub">สีที่ช่วยให้ใจนิ่งและมั่นใจ</span></div>
+                </div>
+                {luckyToday ? (
+                  <div className="tile" data-testid="lucky-card">
+                    <div className="glyph"><span className="num">{luckyToday.number}</span></div>
                     <div>
-                      <span className="step-label">STEP 0{i + 1}</span>
-                      <h3>{item.title}</h3>
-                      <p>{item.text}</p>
+                      <small>เลขและสีนำโชค จากไพ่วันนี้</small>
+                      <b>เลข {luckyToday.number} · {luckyToday.colour.name}</b>
+                      <span className="sub">จาก {dailyCard?.nameTh}</span>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  <button className="tile locked" onClick={openDaily} data-testid="lucky-card">
+                    <div className="glyph"><Sparkles size={26} strokeWidth={1.4} /></div>
+                    <div><small>เลขและสีนำโชค</small><b>เปิดไพ่ประจำวันเพื่อดู</b><span className="sub">คำนวณจากไพ่ที่ได้วันนี้</span></div>
+                  </button>
+                )}
               </div>
             </section>
-            <section className="closing-note page-width">
-              <Sparkle size={22} strokeWidth={0.9} />
-              <p>
-                “ไม่ว่าวันนี้ไพ่จะบอกอะไร
-                <br className="mobile-break" />{" "}
-                คุณยังเป็นคนเขียนเรื่องราวของตัวเองเสมอ”
-              </p>
-              <span>A GENTLE REMINDER FROM CHANJAI</span>
-            </section>
+
+            <div className="streak-row">
+              <div className="streak" title={ui.home.streakHint}>
+                <Flame size={16} strokeWidth={1.8} />
+                <span>{ui.home.streak(streak.current)}</span>
+              </div>
+              {ui.home.streakNote(streak) && <p className="fine streak-note" data-testid="streak-note">{ui.home.streakNote(streak)}</p>}
+            </div>
           </main>
-          <footer className="footer page-width">
-            <div className="footer-row">
-              <a href="#" className="footer-brand">
-                <Moon size={19} strokeWidth={1.3} />
-                จันทร์ใจ <span>ให้ใจได้มีพื้นที่</span>
-              </a>
-              <div>
-                <button onClick={() => openScreen({ kind: "library" })}>
-                  ความหมายไพ่
-                </button>
-                <button onClick={() => openScreen({ kind: "about" })}>
-                  เกี่ยวกับเรา & ความเป็นส่วนตัว
-                </button>
-                <button onClick={() => openScreen({ kind: "journal" })}>
-                  <History size={13} />
-                  บันทึกของใจ
-                </button>
-              </div>
-            </div>
-            <div className="footer-bottom">
-              <p>
-                เพื่อความบันเทิงและการไตร่ตรอง ไม่ใช่การทำนายที่แน่นอน
-                หรือคำแนะนำทางการแพทย์ การเงิน และกฎหมาย
-              </p>
-              <span>© {new Date().getFullYear()} CHANJAI</span>
-            </div>
+
+          <footer className="footer">
+            <p>{ui.home.disclaimer}</p>
+            <button className="text-button" onClick={() => setScreen({ kind: "about" })}>{ui.nav.about}</button>
           </footer>
+
           {screen && (
             <Dialog
-              wide={
-                screen.kind === "library" ||
-                (screen.kind === "reading" &&
-                  !!screen.existing &&
-                  screen.existing.cards.length === 3)
-              }
-              title={
-                screen.kind === "reading"
-                  ? "เปิดไพ่จันทร์ใจ"
-                  : screen.kind === "journal"
-                    ? "บันทึกของใจ"
-                    : screen.kind === "library"
-                      ? "ห้องสมุดไพ่"
-                      : screen.kind === "share"
-                        ? "แชร์ผลไพ่"
-                        : "เกี่ยวกับจันทร์ใจ"
-              }
-              onClose={() =>
-                screen.kind === "share"
-                  ? setScreen({ kind: "reading", existing: screen.reading })
-                  : setScreen(null)
-              }
+              wide={screen.kind === "library"}
+              title={title}
+              onClose={() => (screen.kind === "share" ? setScreen({ kind: "reading", existing: screen.reading }) : setScreen(null))}
             >
               {screen.kind === "reading" && (
                 <ReadingFlow
-                  key={screen.existing?.id || `${screen.topic}-${screen.daily}`}
+                  key={screen.existing?.id || `${screen.chip}-${screen.daily}`}
                   daily={screen.daily}
-                  initialTopic={screen.topic}
+                  initialChip={screen.chip}
                   existing={screen.existing}
                   onSave={save}
                   onShare={(reading) => setScreen({ kind: "share", reading })}
@@ -867,102 +511,35 @@ export default function App() {
                 />
               )}
               {screen.kind === "journal" && (
-                <Journal
-                  readings={journal.readings}
-                  onOpen={(r) => setScreen({ kind: "reading", existing: r })}
-                  onDelete={erase}
-                  storageUnavailable={journal.storageUnavailable}
-                />
+                <Journal readings={journal.readings} onOpen={(r) => setScreen({ kind: "reading", existing: r })} onDelete={erase} storageUnavailable={journal.storageUnavailable} />
               )}
+              {screen.kind === "settings" && <SettingsForm birth={birth} onSave={saveBirthDate} onClose={() => setScreen(null)} />}
               {screen.kind === "library" && <Library />}
               {screen.kind === "share" && (
-                <ShareView
-                  reading={screen.reading}
-                  onBack={() =>
-                    setScreen({ kind: "reading", existing: screen.reading })
-                  }
-                  notify={setToast}
-                />
+                <ShareView reading={screen.reading} onBack={() => setScreen({ kind: "reading", existing: screen.reading })} notify={setToast} />
               )}
               {screen.kind === "about" && (
                 <div className="about">
-                  <span className="eyebrow">A SOFT PLACE TO LAND</span>
-                  <h2>ยินดีต้อนรับสู่จันทร์ใจ</h2>
-                  <p>
-                    ในวันที่มีคำถามมากมาย เราอยากให้คุณมีพื้นที่เล็ก ๆ
-                    ไว้พักและฟังเสียงของตัวเอง ไพ่ทุกใบเป็นคำชวนมองชีวิตอีกมุม
-                    ด้วยภาษาที่อ่อนโยนและไม่ตัดสิน
-                  </p>
+                  <h2>{ui.about.title}</h2>
+                  <p className="muted lead">{ui.about.p1}</p>
                   <div className="about-values">
-                    <div>
-                      <Sun size={20} />
-                      <h3>ไพ่ฟรีที่กลับมาได้ทุกวัน</h3>
-                      <p>
-                        ไพ่ประจำวัน 1 ใบ เปลี่ยนวันเวลาเที่ยงคืนของประเทศไทย
-                        และสเปรดพื้นฐาน 1–3 ใบ โดยไม่ต้องสมัครสมาชิก
-                      </p>
-                    </div>
-                    <div>
-                      <ShieldCheck size={20} />
-                      <h3>เรื่องของคุณ เป็นของคุณ</h3>
-                      <p>
-                        คำถามและประวัติสูงสุด 150 รายการเก็บไว้ในเบราว์เซอร์นี้
-                        ไม่ส่งไปยังบริการ AI และไม่ซิงก์ข้ามอุปกรณ์
-                        คุณลบได้จากหน้าบันทึกของใจ
-                        การล้างข้อมูลเว็บไซต์จะลบประวัติและสตรีคด้วย
-                      </p>
-                    </div>
-                    <div>
-                      <Heart size={20} />
-                      <h3>ไพ่ชวนคิด ไม่ชี้ชะตา</h3>
-                      <p>
-                        คำอ่านเป็นเนื้อหาภาษาไทยตามความหมายของไพ่ตั้งตรงและหัวข้อที่คุณเลือก
-                        ไม่ใช่การอ่านใจผู้อื่นหรือคำทำนายที่รับประกันผล
-                        ใช้ข้อมูลจริงและผู้เชี่ยวชาญประกอบการตัดสินใจเรื่องสำคัญ
-                      </p>
-                    </div>
-                    <div>
-                      <BookOpen size={20} />
-                      <h3>พื้นที่ที่กำลังเติบโต</h3>
-                      <p>
-                        เวอร์ชันแรกนี้ยังไม่มี AI สนทนา การแจ้งเตือน LINE OA
-                        หรือระบบบัญชี
-                        ภาพไพ่เป็นภาพประกอบชั่วคราวระหว่างรอชุดไพ่จริง
-                      </p>
-                    </div>
+                    {ui.about.values.map(([h, p]) => (
+                      <div key={h}><h3>{h}</h3><p className="muted">{p}</p></div>
+                    ))}
                   </div>
-                  <button className="button primary full" onClick={openDaily}>
-                    ให้เวลาตัวเองสักนิด
-                    <Moon size={17} />
-                  </button>
+                  <button className="button primary full" onClick={openDaily}>{ui.about.cta}</button>
                 </div>
               )}
             </Dialog>
           )}
           {toast && (
             <div className="toast" role="status">
-              <Sparkles size={17} />
               {toast}
-              <button onClick={() => setToast("")} aria-label="ปิดข้อความ">
-                <X size={16} />
-              </button>
+              <button onClick={() => setToast("")} aria-label={ui.toast.close}><X size={16} /></button>
             </div>
           )}
         </div>
       </ArtworkContext.Provider>
     </MotionConfig>
-  );
-}
-function ArrowUpRight() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path d="M5 15 15 5M5 5h10v10" stroke="currentColor" strokeWidth="1.3" />
-    </svg>
   );
 }

@@ -7,3 +7,5 @@ playwright-report/
 !.env.example
 *.local
 *.tsbuildinfo
+public/cards/raw/
+public/cards/raw/

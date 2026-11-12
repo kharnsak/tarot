@@ -64,13 +64,29 @@ function scene(card: Card) {
       return `<circle cx="110" cy="144" r="53" fill="none" stroke="#e2cfa6"/><path d="M110 89v110M55 144h110" stroke="#e2cfa6" opacity=".4"/>${star(110, 144, 38)}${star(61, 77, 9)}${star(163, 217, 9)}<path d="M67 240q43-29 86 0" fill="none" stroke="#e2cfa6"/>`;
   }
 }
+const goldDefs = (id: string) =>
+  `<linearGradient id="gf-${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B8913A"/><stop offset=".35" stop-color="#F0DB9C"/><stop offset=".6" stop-color="#B8913A"/><stop offset="1" stop-color="#E9CF8A"/></linearGradient>`;
+function backArt(id: string) {
+  const g = `url(#gf-${id})`;
+  const rays = Array.from(
+    { length: 16 },
+    (_, i) =>
+      `<path d="M110 175 L110 ${i % 2 ? 104 : 92}" transform="rotate(${i * 22.5} 110 175)"/>`,
+  ).join("");
+  const dots = Array.from(
+    { length: 24 },
+    (_, i) =>
+      `<circle cx="110" cy="${175 - 78}" r="1.3" transform="rotate(${i * 15} 110 175)"/>`,
+  ).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="350" viewBox="0 0 220 350"><defs>${goldDefs(id)}<radialGradient id="bk-${id}" cx=".5" cy=".42" r=".8"><stop offset="0" stop-color="#1b1a1d"/><stop offset="1" stop-color="#09090a"/></radialGradient></defs><rect width="220" height="350" rx="12" fill="url(#bk-${id})"/><rect x="8" y="8" width="204" height="334" rx="7" fill="none" stroke="${g}" stroke-width="1.4"/><rect x="14" y="14" width="192" height="322" rx="4" fill="none" stroke="${g}" stroke-width=".6" opacity=".7"/><g fill="none" stroke="${g}" stroke-width=".9" stroke-linecap="round"><circle cx="110" cy="175" r="78"/><circle cx="110" cy="175" r="68" opacity=".55"/><circle cx="110" cy="175" r="30" opacity=".8"/>${rays}<path d="M126 148a30 30 0 1 0 0 54 24 24 0 0 1 0-54Z" fill="${g}" stroke="none"/></g><g fill="${g}">${dots}${star(110, 54, 7)}${star(110, 296, 7)}${star(40, 175, 5)}${star(180, 175, 5)}${star(32, 32, 5)}${star(188, 32, 5)}${star(32, 318, 5)}${star(188, 318, 5)}</g><path d="M60 44h100M60 306h100" stroke="${g}" stroke-width=".6" opacity=".6"/></svg>`;
+}
 export function cardSvg(card?: Card, suffix = "card") {
-  const id = `g-${suffix.replace(/[^a-zA-Z0-9-]/g, "")}`;
-  const tint = card?.tint || "#a898c2";
-  const backdrop = card
-    ? `<rect x="24" y="40" width="172" height="214" rx="80" fill="${tint}" opacity=".22"/>${scene(card)}`
-    : `<ellipse cx="110" cy="151" rx="57" ry="82" stroke="#baa37f" fill="none" opacity=".6"/><ellipse cx="110" cy="151" rx="40" ry="61" stroke="#baa37f" fill="none" opacity=".3"/><path d="M110 69v164M53 151h114m-99-58 84 116m0-116-84 116" stroke="#baa37f" opacity=".3"/><path d="M132 118a40 40 0 1 0 4 66 40 40 0 0 1-4-66Z" fill="#d9bf90"/>${star(135, 139, 13)}${star(110, 64, 9)}${star(110, 239, 9)}${star(52, 151, 7)}${star(168, 151, 7)}`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="350" viewBox="0 0 220 350"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${card ? "#6d5b7a" : "#40304e"}"/><stop offset=".5" stop-color="${card ? "#88708d" : "#241b35"}"/><stop offset="1" stop-color="${card ? "#57455f" : "#463454"}"/></linearGradient><pattern id="p-${id}" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r=".65" fill="#d5c4a8" opacity=".28"/></pattern></defs><rect width="220" height="350" rx="12" fill="url(#${id})"/><rect width="220" height="350" rx="12" fill="url(#p-${id})"/><rect x="9" y="9" width="202" height="332" rx="7" fill="none" stroke="#d8c29d" stroke-width=".8"/><rect x="15" y="15" width="190" height="320" rx="4" fill="none" stroke="#d8c29d" stroke-opacity=".45" stroke-width=".5"/><g fill="#dac6a0">${star(24, 24, 6)}${star(196, 24, 6)}${star(24, 326, 6)}${star(196, 326, 6)}${star(43, 58, 3)}${star(178, 87, 3)}${star(42, 211, 3)}${star(179, 251, 3)}</g><g fill="#ddcaa6" stroke-linecap="round">${backdrop}</g>${card ? `<text x="110" y="35" fill="#eeddbc" font-size="11" text-anchor="middle" font-family="Georgia,serif" letter-spacing="3">${card.numeral}</text><path d="M30 265h160" stroke="#e1cdaa" opacity=".5"/><text x="110" y="292" fill="#f3e5ca" font-size="${card.name.length > 19 ? "11" : "14"}" text-anchor="middle" font-family="Georgia,serif" letter-spacing="1.5">${card.name.toUpperCase()}</text><text x="110" y="316" fill="#e4d6bd" font-size="9" text-anchor="middle" font-family="serif" letter-spacing="3">CHANJAI TAROT</text>` : `<text x="110" y="285" fill="#ddc69e" font-size="10" text-anchor="middle" font-family="Georgia,serif" letter-spacing="4">CHANJAI</text><text x="110" y="304" fill="#ddc69e" font-size="7" text-anchor="middle" font-family="Georgia,serif" letter-spacing="3">TRUST YOUR TIMING</text>`}</svg>`;
+  const id = suffix.replace(/[^a-zA-Z0-9-]/g, "");
+  if (!card) return backArt(id);
+  const g = `url(#gf-${id})`;
+  const tint = card.tint || "#a898c2";
+  const font = "'Cormorant Garamond',Georgia,serif";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="350" viewBox="0 0 220 350"><defs>${goldDefs(id)}<linearGradient id="fc-${id}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#262119"/><stop offset=".55" stop-color="#1a1714"/><stop offset="1" stop-color="#120f0c"/></linearGradient><filter id="mute-${id}"><feColorMatrix type="saturate" values=".38"/></filter></defs><rect width="220" height="350" rx="12" fill="url(#fc-${id})"/><rect x="8" y="8" width="204" height="334" rx="7" fill="none" stroke="${g}" stroke-width="1.2"/><rect x="14" y="14" width="192" height="322" rx="4" fill="none" stroke="${g}" stroke-width=".5" opacity=".6"/><g filter="url(#mute-${id})" fill="#ddcaa6" stroke-linecap="round"><rect x="24" y="40" width="172" height="214" rx="80" fill="${tint}" opacity=".2"/>${scene(card)}</g><text x="110" y="34" fill="${g}" font-size="13" font-style="italic" text-anchor="middle" font-family="${font}" letter-spacing="3">${card.numeral}</text><path d="M34 268h152" stroke="${g}" stroke-width=".7"/><text x="110" y="296" fill="#F3E6C8" font-size="${card.name.length > 19 ? "15" : "18"}" font-style="italic" text-anchor="middle" font-family="${font}" letter-spacing="1">${card.name}</text><text x="110" y="319" fill="#B8913A" font-size="8" text-anchor="middle" font-family="${font}" letter-spacing="4">CHANJAI TAROT</text></svg>`;
 }
 export function CardArt({
   card,
@@ -86,7 +102,7 @@ export function CardArt({
   const path = card && artwork[card.id];
   return (
     <div
-      className={`card-art ${className}`}
+      className={`card-art ${card ? "face" : "back"} ${className}`}
       role={decorative ? undefined : "img"}
       aria-label={
         decorative
@@ -97,9 +113,9 @@ export function CardArt({
       }
       aria-hidden={decorative || undefined}
     >
-      {path ? (
+      {path || !card ? (
         <img
-          src={path}
+          src={path || `${import.meta.env.BASE_URL}cards/back.webp`}
           alt=""
           onError={(e) => {
             e.currentTarget.style.display = "none";
@@ -108,7 +124,7 @@ export function CardArt({
         />
       ) : null}
       <div
-        hidden={!!path}
+        hidden={!!path || !card}
         dangerouslySetInnerHTML={{ __html: cardSvg(card, id) }}
       />
     </div>

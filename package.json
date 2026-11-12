@@ -8,12 +8,12 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --import tsx --test tests/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "import-cards": "node --import tsx scripts/import-cards.mjs"
   },
   "dependencies": {
+    "@fontsource/anuphan": "^5.3.0",
     "@fontsource/cormorant-garamond": "^5.2.8",
-    "@fontsource/noto-sans-thai": "^5.2.9",
-    "@fontsource/noto-serif-thai": "^5.2.8",
     "lucide-react": "^0.468.0",
     "motion": "^12.23.0",
     "react": "^19.2.0",
@@ -25,6 +25,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.0",
+    "sharp": "^0.35.5",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3",
     "vite": "^7.2.0"

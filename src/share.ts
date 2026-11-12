@@ -1,7 +1,12 @@
-import { cardById, interpretation, topics } from "./tarot";
+import { cardText } from "./tarot";
 import { cardSvg } from "./art";
 import { thaiDate } from "./storage";
 import type { Reading } from "./storage";
+import { chipOf, ui } from "./ui/copy";
+import { quoteIndex, resolveCards } from "./reading";
+
+export type ShareFormat = "story" | "feed";
+const SIZES: Record<ShareFormat, [number, number]> = { story: [1080, 1920], feed: [1080, 1350] };
 
 async function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -11,166 +16,163 @@ async function loadImage(src: string) {
     image.src = src;
   });
 }
-function wrap(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  width: number,
-  lineHeight: number,
-  maxLines = 5,
-) {
-  const words = Array.from(
-    new Intl.Segmenter("th", { granularity: "word" }).segment(text),
-    (s) => s.segment,
-  );
-  const lines: string[] = [];
+function lines(ctx: CanvasRenderingContext2D, text: string, width: number) {
+  const words = Array.from(new Intl.Segmenter("th", { granularity: "word" }).segment(text), (s) => s.segment);
+  const out: string[] = [];
   let line = "";
   for (const word of words) {
     if (ctx.measureText(line + word).width > width && line) {
-      lines.push(line.trim());
+      out.push(line.trim());
       line = word;
     } else line += word;
   }
-  if (line) lines.push(line.trim());
-  lines
-    .slice(0, maxLines)
-    .forEach((text, i) =>
-      ctx.fillText(
-        text + (i === maxLines - 1 && lines.length > maxLines ? "…" : ""),
-        x,
-        y + i * lineHeight,
-      ),
-    );
-  return Math.min(lines.length, maxLines) * lineHeight;
+  if (line.trim()) out.push(line.trim());
+  return out;
 }
-export async function createShareImage(
-  reading: Reading,
-  artwork: Record<string, string>,
-) {
+function gold(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) {
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, "#B8913A");
+  g.addColorStop(0.45, "#E9CF8A");
+  g.addColorStop(0.7, "#B8913A");
+  g.addColorStop(1, "#D9BC72");
+  return g;
+}
+
+export async function createShareImage(reading: Reading, artwork: Record<string, string>, format: ShareFormat = "story") {
+  const [W, H] = SIZES[format];
+  const story = format === "story";
+  await Promise.all([
+    document.fonts.load('400 30px "Anuphan"', "ไพ่ จันทร์ใจ"),
+    document.fonts.load('600 60px "Anuphan"', "ไพ่ จันทร์ใจ"),
+    document.fonts.load('italic 500 30px "Cormorant Garamond"', "CHANJAI"),
+  ]).catch(() => {});
   await document.fonts.ready;
   const canvas = document.createElement("canvas");
-  canvas.width = 1080;
-  canvas.height = 1440;
+  canvas.width = W;
+  canvas.height = H;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("อุปกรณ์นี้ไม่รองรับการสร้างภาพ");
-  const bg = ctx.createLinearGradient(0, 0, 1080, 1440);
-  bg.addColorStop(0, "#332340");
-  bg.addColorStop(0.5, "#21182e");
-  bg.addColorStop(1, "#13101d");
+  if (!ctx) throw new Error("canvas unavailable");
+
+  // ivory ground with a very soft light
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#FBFAF8");
+  bg.addColorStop(1, "#F1EEFB");
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, 1080, 1440);
-  const glow = ctx.createRadialGradient(540, 450, 20, 540, 450, 650);
-  glow.addColorStop(0, "#9373a040");
-  glow.addColorStop(1, "#9373a000");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, 1080, 1440);
-  ctx.strokeStyle = "#d4b98b70";
+  ctx.fillRect(0, 0, W, H);
+  const light = ctx.createRadialGradient(W / 2, H * 0.3, 20, W / 2, H * 0.3, W * 0.8);
+  light.addColorStop(0, "rgba(109,74,255,.10)");
+  light.addColorStop(1, "rgba(109,74,255,0)");
+  ctx.fillStyle = light;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = gold(ctx, 0, 0, W, H);
+  ctx.lineWidth = 2;
+  ctx.strokeRect(44, 44, W - 88, H - 88);
+  ctx.globalAlpha = 0.45;
   ctx.lineWidth = 1;
-  ctx.strokeRect(35, 35, 1010, 1370);
-  ctx.strokeRect(46, 46, 988, 1348);
+  ctx.strokeRect(58, 58, W - 116, H - 116);
+  ctx.globalAlpha = 1;
+
   ctx.textAlign = "center";
-  ctx.fillStyle = "#e6cc9f";
-  ctx.font = '42px "Noto Serif Thai"';
-  ctx.fillText("☾ จันทร์ใจ", 540, 128);
-  ctx.fillStyle = "#c5b7cd";
-  ctx.font = '21px "Noto Sans Thai"';
-  ctx.fillText(
-    `${reading.daily ? "ไพ่ประจำวันของฉัน" : topics.find((t) => t.id === reading.topic)?.label} · ${thaiDate(new Date(reading.createdAt))}`,
-    540,
-    181,
-  );
-  const selected = reading.cards.map((id) => cardById.get(id)!);
-  const count = selected.length,
-    cardWidth = count === 1 ? 300 : 238,
-    cardHeight = (cardWidth * 350) / 220;
+  ctx.textBaseline = "alphabetic";
+  const top = story ? 150 : 128;
+  ctx.fillStyle = gold(ctx, W / 2 - 150, 0, W / 2 + 150, 0);
+  ctx.font = '600 44px "Anuphan"';
+  ctx.fillText(ui.brand, W / 2, top);
+  ctx.fillStyle = "#5F5978";
+  ctx.font = '400 28px "Anuphan"';
+  const label = reading.daily ? ui.share.dailyLabel : chipOf(reading).label;
+  ctx.fillText(`${label} · ${thaiDate(new Date(reading.createdAt))}`, W / 2, top + 54);
+
+  const resolved = resolveCards(reading);
+  const selected = resolved.map((r) => r.card);
+  const count = selected.length;
+  const cw = count === 1 ? (story ? 460 : 360) : count === 2 ? (story ? 380 : 300) : story ? 304 : 290;
+  const ch = (cw * 350) / 220;
+  const gap = count === 1 ? 0 : 30;
+  const cy = story ? (count === 1 ? 330 : 400) : count === 1 ? 210 : 240;
   for (const [i, card] of selected.entries()) {
     let image: HTMLImageElement;
     try {
-      image = await loadImage(
-        artwork[card.id] ||
-          `data:image/svg+xml;charset=utf-8,${encodeURIComponent(cardSvg(card, `share-${i}`))}`,
-      );
+      image = await loadImage(artwork[card.id] || `data:image/svg+xml;charset=utf-8,${encodeURIComponent(cardSvg(card, `s${i}`))}`);
     } catch {
-      image = await loadImage(
-        `data:image/svg+xml;charset=utf-8,${encodeURIComponent(cardSvg(card, `fallback-${i}`))}`,
-      );
+      image = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(cardSvg(card, `f${i}`))}`);
     }
-    const x =
-        540 - (count * cardWidth + (count - 1) * 35) / 2 + i * (cardWidth + 35),
-      y = count === 1 ? 245 : 285;
+    const x = W / 2 - (count * cw + (count - 1) * gap) / 2 + i * (cw + gap);
     ctx.save();
-    ctx.shadowColor = "#0008";
-    ctx.shadowBlur = 40;
-    ctx.shadowOffsetY = 20;
+    ctx.shadowColor = "rgba(40,30,10,.38)";
+    ctx.shadowBlur = 60;
+    ctx.shadowOffsetY = 28;
+    ctx.fillStyle = "#1B1530";
     ctx.beginPath();
-    ctx.roundRect(x, y, cardWidth, cardHeight, 12);
-    ctx.clip();
-    ctx.drawImage(image, x, y, cardWidth, cardHeight);
+    ctx.roundRect(x, cy, cw, ch, 16);
+    ctx.fill();
     ctx.restore();
-    if (count === 3) {
-      ctx.fillStyle = "#d8c1e4";
-      ctx.font = '22px "Noto Sans Thai"';
-      ctx.fillText(
-        ["สิ่งที่ผ่านมา", "สิ่งที่เป็นอยู่", "แนวทางข้างหน้า"][i],
-        x + cardWidth / 2,
-        y + cardHeight + 47,
-      );
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(x, cy, cw, ch, 16);
+    ctx.clip();
+    if (resolved[i].reversed) {
+      ctx.translate(x + cw / 2, cy + ch / 2);
+      ctx.rotate(Math.PI);
+      ctx.drawImage(image, -cw / 2, -ch / 2, cw, ch);
+    } else ctx.drawImage(image, x, cy, cw, ch);
+    ctx.restore();
+    if (count > 1) {
+      ctx.fillStyle = "#5A37E8";
+      ctx.font = '500 26px "Anuphan"';
+      ctx.fillText(resolved[i].label + (resolved[i].reversed ? ` · ${ui.result.reversed}` : ""), x + cw / 2, cy + ch + 50);
+      ctx.fillStyle = "#1B1530";
+      ctx.font = '600 32px "Anuphan"';
+      ctx.fillText(card.nameTh, x + cw / 2, cy + ch + 96);
     }
   }
-  let y = count === 1 ? 800 : 785;
-  ctx.fillStyle = "#f4e7d7";
-  ctx.font = '38px "Noto Serif Thai"';
-  ctx.fillText(
-    count === 1 ? selected[0].keyword : "ค่อย ๆ ฟังเสียงข้างใน",
-    540,
-    y,
-  );
-  y += 65;
-  ctx.fillStyle = "#ddd3e3";
-  ctx.font = '25px "Noto Sans Thai"';
-  if (count === 1)
-    y += wrap(
-      ctx,
-      interpretation(selected[0], reading.topic),
-      540,
-      y,
-      810,
-      45,
-      5,
-    );
-  else
-    for (const card of selected) {
-      y += wrap(ctx, `${card.thai} · ${card.keyword}`, 540, y, 820, 42, 2);
-      y += 14;
+  let y = cy + ch + (count > 1 ? 96 : 0);
+  if (count === 1) {
+    ctx.fillStyle = "#1B1530";
+    ctx.font = '600 48px "Anuphan"';
+    ctx.fillText(selected[0].nameTh + (resolved[0].reversed ? ` · ${ui.result.reversed}` : ""), W / 2, y + 84);
+    ctx.fillStyle = "#5A37E8";
+    ctx.font = 'italic 500 34px "Cormorant Garamond"';
+    ctx.fillText(selected[0].nameEn, W / 2, y + 132);
+    y += 132;
+  }
+
+  // the big line
+  const quote = cardText(resolved[quoteIndex(count)].card, resolved[quoteIndex(count)].reversed, "advice");
+  const qsize = story ? 70 : 58;
+  ctx.fillStyle = "#1B1530";
+  ctx.font = `600 ${qsize}px "Anuphan"`;
+  const ql = lines(ctx, quote, W - 220).slice(0, story ? 5 : 4);
+  y += story ? 130 : 108;
+  ql.forEach((l, i) => ctx.fillText(l, W / 2, y + qsize + i * qsize * 1.3));
+  y += qsize + (ql.length - 1) * qsize * 1.3;
+
+  if (story && count > 1) {
+    y += 110;
+    ctx.font = '400 32px "Anuphan"';
+    ctx.fillStyle = "#5F5978";
+    for (const [i, card] of selected.entries()) {
+      const row = `${resolved[i].label} · ${card.keywords[0] ?? card.keyword}`;
+      ctx.fillText(lines(ctx, row, W - 240)[0], W / 2, y + i * 58);
     }
-  ctx.strokeStyle = "#d4b98b50";
+  }
+
+  // footer
+  const fy = H - (story ? 150 : 118);
+  ctx.strokeStyle = gold(ctx, W / 2 - 80, 0, W / 2 + 80, 0);
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(430, 1150);
-  ctx.lineTo(650, 1150);
+  ctx.moveTo(W / 2 - 70, fy - 62);
+  ctx.lineTo(W / 2 + 70, fy - 62);
   ctx.stroke();
-  ctx.fillStyle = "#d9bd93";
-  ctx.font = '24px "Noto Serif Thai"';
-  ctx.fillText("คำตอบที่สำคัญที่สุด ยังอยู่ในใจคุณ", 540, 1210);
-  ctx.fillStyle = "#aa9cb7";
-  ctx.font = '19px "Noto Sans Thai"';
-  ctx.fillText(
-    "เพื่อความบันเทิงและการไตร่ตรอง ไม่ใช่คำทำนายที่แน่นอน",
-    540,
-    1284,
-  );
-  ctx.fillStyle = "#d6c5a4";
-  ctx.font = '20px "Cormorant Garamond"';
-  ctx.fillText(
-    "C H A N J A I   ·   A   M O M E N T   F O R   Y O U",
-    540,
-    1348,
-  );
+  ctx.fillStyle = gold(ctx, W / 2 - 160, 0, W / 2 + 160, 0);
+  ctx.font = 'italic 500 34px "Cormorant Garamond"';
+  ctx.fillText("C H A N J A I   T A R O T", W / 2, fy);
+  ctx.fillStyle = "#5F5978";
+  ctx.font = '400 22px "Anuphan"';
+  ctx.fillText(ui.home.disclaimer, W / 2, fy + 44);
+
   return new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob(
-      (blob) =>
-        blob ? resolve(blob) : reject(new Error("ไม่สามารถบันทึกภาพได้")),
-      "image/png",
-    ),
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("toBlob failed"))), "image/png"),
   );
 }

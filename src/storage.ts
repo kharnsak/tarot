@@ -1,5 +1,10 @@
-import { cardById } from "./tarot";
-import type { Topic } from "./tarot";
+import { cardById, SPREADS } from "./tarot";
+import type { SpreadId, Topic } from "./tarot";
+import { parseBirthDate } from "./astro";
+import { secureRng, shuffle } from "./data/rng";
+
+/** Maximum readings kept in history. */
+export const MAX_HISTORY = 100;
 
 export type Reading = {
   id: string;
@@ -9,6 +14,12 @@ export type Reading = {
   question: string;
   cards: string[];
   daily: boolean;
+  /** Added with the new spreads; absent on older saved readings. */
+  spread?: SpreadId;
+  /** Parallel to `cards`: true when that card was drawn reversed. */
+  reversed?: boolean[];
+  /** Which card text the reading shows (cardText key). Absent on older readings. */
+  focus?: "core" | "love" | "them" | "work" | "money";
 };
 export type Journal = { readings: Reading[]; storageUnavailable: boolean };
 const key = "chanjai-journal-v1";
@@ -42,8 +53,14 @@ export function isReading(value: unknown): value is Reading {
     v.question.length <= 500 &&
     typeof v.daily === "boolean" &&
     Array.isArray(v.cards) &&
-    [1, 3].includes(v.cards.length) &&
+    v.cards.length >= 1 &&
+    v.cards.length <= 3 &&
     (!v.daily || v.cards.length === 1) &&
+    (v.spread === undefined ||
+      (typeof v.spread === "string" && Object.hasOwn(SPREADS, v.spread) && SPREADS[v.spread].count === v.cards.length)) &&
+    (v.reversed === undefined ||
+      (Array.isArray(v.reversed) && v.reversed.length === v.cards.length && v.reversed.every((r) => typeof r === "boolean"))) &&
+    (v.focus === undefined || ["core", "love", "them", "work", "money"].includes(v.focus)) &&
     new Set(v.cards).size === v.cards.length &&
     v.cards.every((id) => cardById.has(id))
   );
@@ -51,8 +68,12 @@ export function isReading(value: unknown): value is Reading {
 export function loadJournal(): Journal {
   try {
     const data = JSON.parse(localStorage.getItem(key) || "[]");
+    const seen = new Set<string>();
+    const readings = Array.isArray(data)
+      ? data.filter(isReading).filter((r) => !seen.has(r.id) && !!seen.add(r.id))
+      : [];
     return {
-      readings: Array.isArray(data) ? data.filter(isReading).slice(0, 150) : [],
+      readings: readings.slice(0, MAX_HISTORY),
       storageUnavailable: false,
     };
   } catch {
@@ -61,28 +82,22 @@ export function loadJournal(): Journal {
 }
 export function saveJournal(readings: Reading[]) {
   try {
-    localStorage.setItem(key, JSON.stringify(readings.slice(0, 150)));
+    localStorage.setItem(key, JSON.stringify(readings.slice(0, MAX_HISTORY)));
     return true;
   } catch {
     return false;
   }
 }
 export function randomIndex(limit: number) {
-  const range = 0x100000000,
-    max = range - (range % limit),
-    random = new Uint32Array(1);
-  do {
-    crypto.getRandomValues(random);
-  } while (random[0] >= max);
-  return random[0] % limit;
+  return secureRng.int(limit);
 }
+/** Shuffle ids (Fisher-Yates, crypto RNG) and take `count`. Does not mutate `ids`. */
 export function drawCards(ids: string[], count: number) {
-  const pool = [...ids];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = randomIndex(i + 1);
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool.slice(0, count);
+  return shuffle(ids, secureRng).slice(0, count);
+}
+/** Newest first, capped at MAX_HISTORY. Returns a new array. */
+export function addReading(readings: Reading[], next: Reading) {
+  return [next, ...readings.filter((r) => r.id !== next.id)].slice(0, MAX_HISTORY);
 }
 export function streak(readings: Reading[], now = new Date()) {
   const days = new Set(readings.filter((r) => r.daily).map((r) => r.date));
@@ -95,4 +110,61 @@ export function streak(readings: Reading[], now = new Date()) {
     cursor -= dayMs;
   }
   return count;
+}
+
+/** Current streak plus the longest run ever recorded in the (capped) history. */
+export function streakInfo(readings: Reading[], now = new Date()) {
+  const days = [...new Set(readings.filter((r) => r.daily).map((r) => r.date))].sort();
+  let longest = 0,
+    run = 0,
+    prev = 0;
+  for (const day of days) {
+    const t = Date.parse(day + "T00:00:00Z");
+    run = prev && t - prev === 86400000 ? run + 1 : 1;
+    longest = Math.max(longest, run);
+    prev = t;
+  }
+  return {
+    current: streak(readings, now),
+    longest,
+    doneToday: days.includes(dayKey(now)),
+  };
+}
+
+// --- anonymous id (seeds the daily card) and optional birth data -------------------------
+const uidKey = "chanjai-uid-v1";
+let memoryUid = "";
+export function userId() {
+  try {
+    let id = localStorage.getItem(uidKey);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(uidKey, id);
+    }
+    return id;
+  } catch {
+    return (memoryUid ||= crypto.randomUUID());
+  }
+}
+const birthKey = "chanjai-birth-v1";
+export type Birth = { date: string; time?: string };
+export function loadBirth(): Birth | undefined {
+  try {
+    const v = JSON.parse(localStorage.getItem(birthKey) || "null");
+    if (v && typeof v.date === "string" && parseBirthDate(v.date)) {
+      return { date: v.date, time: typeof v.time === "string" && /^\d{1,2}:\d{2}$/.test(v.time) ? v.time : undefined };
+    }
+  } catch {
+    /* storage unavailable */
+  }
+  return undefined;
+}
+export function saveBirth(birth?: Birth) {
+  try {
+    if (birth) localStorage.setItem(birthKey, JSON.stringify(birth));
+    else localStorage.removeItem(birthKey);
+    return true;
+  } catch {
+    return false;
+  }
 }
