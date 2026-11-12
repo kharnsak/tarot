@@ -1,0 +1,8 @@
+{
+  "days": {
+    "wednesday_day": { "personality": "p-day", "luckyColors": ["เขียว"], "unluckyColors": ["แดง"], "advice": "a", "line": "line-day" },
+    "wednesday_night": { "personality": "p-night", "luckyColors": ["เทา"], "unluckyColors": ["ขาว"], "advice": "a", "line": "line-night" },
+    "sunday": { "personality": "p-sun", "luckyColors": ["แดง"], "unluckyColors": [], "advice": "a" }
+  },
+  "zodiac": { "capricorn": { "personality": "p-cap", "line": "line-cap" } }
+}

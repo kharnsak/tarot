@@ -1,0 +1,20 @@
+[
+  {
+    "id": "the-fool", "nameTh": "ผู้เริ่มต้น", "nameEn": "The Fool", "arcana": "major", "number": 0,
+    "keywords": ["เริ่มต้น", "กล้าลอง"],
+    "upright": { "core": "core-up", "love": "love-up", "work": "work-up", "money": "money-up", "them": "them-up", "advice": "advice-up" },
+    "reversed": { "core": "core-rev", "love": "love-rev", "work": "work-rev", "money": "money-rev", "them": "them-rev", "advice": "advice-rev" },
+    "yesno": { "upright": "yes", "reversed": "maybe" },
+    "daily": "daily-fool",
+    "seo": { "title": "ไพ่ The Fool", "description": "desc", "article": "## ความรัก\nบทความ" }
+  },
+  {
+    "id": "the-star", "nameTh": "ดวงดาว", "nameEn": "The Star", "arcana": "major", "number": 17,
+    "keywords": ["ความหวัง", "ฟื้นตัว"],
+    "upright": { "core": "core-up", "love": "love-up", "work": "work-up", "money": "money-up", "them": "them-up", "advice": "advice-up" },
+    "reversed": { "core": "core-rev", "love": "love-rev", "work": "work-rev", "money": "money-rev", "them": "them-rev", "advice": "advice-rev" },
+    "yesno": { "upright": "yes", "reversed": "no" },
+    "daily": "daily-star",
+    "seo": { "title": "ไพ่ The Star", "description": "desc", "article": "## ความรัก\nบทความ" }
+  }
+]
