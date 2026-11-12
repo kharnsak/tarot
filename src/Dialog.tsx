@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "motion/react";
-import { X } from "lucide-react";
+import { Moon, X } from "lucide-react";
+import { ui } from "./ui/copy";
 import type { ReactNode } from "react";
 
 export default function Dialog({
@@ -80,23 +81,19 @@ export default function Dialog({
         aria-label={title}
         tabIndex={-1}
         ref={ref}
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.3 }}
+        initial={{ opacity: 0, y: 32 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 120, damping: 20 }}
       >
         <div className="dialog-top">
           <span className="mini-brand">
-            ☾ <span>จันทร์ใจ</span>
+            <Moon size={16} strokeWidth={1.6} /> {ui.brand}
           </span>
-          <button
-            className="icon-button"
-            onClick={onClose}
-            aria-label="ปิดหน้าต่าง"
-          >
+          <button className="icon-button" onClick={onClose} aria-label={ui.close}>
             <X size={20} />
           </button>
         </div>
-        {children}
+        <div className="dialog-body">{children}</div>
       </motion.div>
     </motion.div>,
     document.body,
