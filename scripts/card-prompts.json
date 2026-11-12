@@ -1,0 +1,414 @@
+[
+ {
+  "id": "the-fool",
+  "name": "The Fool",
+  "number": "0",
+  "scene": "a carefree young traveller at a cliff edge with a small bundle on a stick, a white flower, a little white dog, sun behind"
+ },
+ {
+  "id": "the-magician",
+  "name": "The Magician",
+  "number": "1",
+  "scene": "a figure raising a wand to the sky and pointing down, infinity sign above, table with cup, sword, coin and wand, lotus flowers"
+ },
+ {
+  "id": "the-high-priestess",
+  "name": "The High Priestess",
+  "number": "2",
+  "scene": "a priestess seated between a gold and a silver pillar, crescent moon crown, scroll in lap, veil with pomegranates"
+ },
+ {
+  "id": "the-empress",
+  "name": "The Empress",
+  "number": "3",
+  "scene": "a queen with a crown of twelve stars seated among roses and lotus, golden wheat sheaves, sceptre"
+ },
+ {
+  "id": "the-emperor",
+  "name": "The Emperor",
+  "number": "4",
+  "scene": "a bearded king in Thai armour on a stone throne with ram heads, sceptre and golden orb, mountains"
+ },
+ {
+  "id": "the-hierophant",
+  "name": "The Hierophant",
+  "number": "5",
+  "scene": "a robed teacher on a throne between two pillars, hand raised in blessing, two kneeling students, crossed keys"
+ },
+ {
+  "id": "the-lovers",
+  "name": "The Lovers",
+  "number": "6",
+  "scene": "a couple in Thai dress holding hands, a winged angel blessing them above, roses and lotus"
+ },
+ {
+  "id": "the-chariot",
+  "name": "The Chariot",
+  "number": "7",
+  "scene": "a warrior standing in a golden chariot pulled by a black and a white sphinx, city skyline behind"
+ },
+ {
+  "id": "strength",
+  "name": "Strength",
+  "number": "8",
+  "scene": "a gentle woman calmly holding a lion's jaw, infinity sign above her head, mountains"
+ },
+ {
+  "id": "the-hermit",
+  "name": "The Hermit",
+  "number": "9",
+  "scene": "an old sage in a purple robe on a snowy peak holding a glowing lantern with a star, staff"
+ },
+ {
+  "id": "wheel-of-fortune",
+  "name": "Wheel of Fortune",
+  "number": "10",
+  "scene": "a golden wheel with zodiac symbols, a snake, a jackal, four winged creatures in the corners (angel, eagle, bull, lion)"
+ },
+ {
+  "id": "justice",
+  "name": "Justice",
+  "number": "11",
+  "scene": "a woman seated between two pillars holding an upright sword and balanced scales"
+ },
+ {
+  "id": "the-hanged-man",
+  "name": "The Hanged Man",
+  "number": "12",
+  "scene": "a calm figure hanging upside down by one foot from a golden tree, legs crossed, glowing halo"
+ },
+ {
+  "id": "death",
+  "name": "Death",
+  "number": "13",
+  "scene": "a skeleton rider in ornate black Thai armour on a white horse holding a black flag with a white rose, sun rising between pillars"
+ },
+ {
+  "id": "temperance",
+  "name": "Temperance",
+  "number": "14",
+  "scene": "a winged angel pouring water between two golden cups, one foot in a pool, irises, rainbow"
+ },
+ {
+  "id": "the-devil",
+  "name": "The Devil",
+  "number": "15",
+  "scene": "a horned goat-headed figure seated with an inverted pentagram above, a man and woman loosely chained below"
+ },
+ {
+  "id": "the-tower",
+  "name": "The Tower",
+  "number": "16",
+  "scene": "a tall golden tower struck by lightning, crown blown off, two figures falling, flames"
+ },
+ {
+  "id": "the-star",
+  "name": "The Star",
+  "number": "17",
+  "scene": "a kneeling woman in a sheer flowing robe (fully covered, modest) pouring water from two jugs into a pool and onto land, one large star and seven small stars, ibis on a tree"
+ },
+ {
+  "id": "the-moon",
+  "name": "The Moon",
+  "number": "18",
+  "scene": "a moon with a calm face between two pillars, a dog and a wolf howling, a crayfish emerging from a pool, winding path"
+ },
+ {
+  "id": "the-sun",
+  "name": "The Sun",
+  "number": "19",
+  "scene": "a smiling sun, a joyful child on a white horse holding a pink banner, sunflowers, low wall"
+ },
+ {
+  "id": "judgement",
+  "name": "Judgement",
+  "number": "20",
+  "scene": "an angel blowing a trumpet with a cross banner from the clouds, people rising joyfully from open boxes, mountains"
+ },
+ {
+  "id": "the-world",
+  "name": "The World",
+  "number": "21",
+  "scene": "a dancing woman inside a laurel wreath holding two wands, angel, eagle, lion and bull in the corners"
+ },
+ {
+  "id": "ace-of-wands",
+  "name": "Ace of Wands",
+  "scene": "a hand from a cloud holding one sprouting staff, castle on a hill below"
+ },
+ {
+  "id": "two-of-wands",
+  "name": "Two of Wands",
+  "scene": "a man on a balcony holding a small globe, two staffs, looking out to sea"
+ },
+ {
+  "id": "three-of-wands",
+  "name": "Three of Wands",
+  "scene": "a figure on a cliff watching ships, three staffs planted beside"
+ },
+ {
+  "id": "four-of-wands",
+  "name": "Four of Wands",
+  "scene": "four staffs with a garland canopy, two people celebrating, temple behind"
+ },
+ {
+  "id": "five-of-wands",
+  "name": "Five of Wands",
+  "scene": "five young people sparring playfully with staffs"
+ },
+ {
+  "id": "six-of-wands",
+  "name": "Six of Wands",
+  "scene": "a rider on a white horse with a laurel wreath, crowd holding staffs"
+ },
+ {
+  "id": "seven-of-wands",
+  "name": "Seven of Wands",
+  "scene": "a man on high ground defending with one staff against six below"
+ },
+ {
+  "id": "eight-of-wands",
+  "name": "Eight of Wands",
+  "scene": "eight staffs flying diagonally across a clear sky over a river"
+ },
+ {
+  "id": "nine-of-wands",
+  "name": "Nine of Wands",
+  "scene": "a tired guard with a bandaged head holding a staff, eight behind him"
+ },
+ {
+  "id": "ten-of-wands",
+  "name": "Ten of Wands",
+  "scene": "a person carrying a heavy bundle of ten staffs toward a village"
+ },
+ {
+  "id": "page-of-wands",
+  "name": "Page of Wands",
+  "scene": "a young messenger in a desert holding a staff, looking at its sprout"
+ },
+ {
+  "id": "knight-of-wands",
+  "name": "Knight of Wands",
+  "scene": "a knight on a rearing horse holding a staff, pyramids in distance"
+ },
+ {
+  "id": "queen-of-wands",
+  "name": "Queen of Wands",
+  "scene": "a queen on a lion throne with a sunflower and staff, black cat at her feet"
+ },
+ {
+  "id": "king-of-wands",
+  "name": "King of Wands",
+  "scene": "a king on a throne with lions and salamanders, holding a flowering staff"
+ },
+ {
+  "id": "ace-of-cups",
+  "name": "Ace of Cups",
+  "scene": "a hand from a cloud holding a goblet overflowing with five streams, a dove, lotus pond"
+ },
+ {
+  "id": "two-of-cups",
+  "name": "Two of Cups",
+  "scene": "a couple exchanging goblets, winged lion head above (caduceus)"
+ },
+ {
+  "id": "three-of-cups",
+  "name": "Three of Cups",
+  "scene": "three women raising goblets in a dance, fruit harvest at feet"
+ },
+ {
+  "id": "four-of-cups",
+  "name": "Four of Cups",
+  "scene": "a person under a tree, arms crossed, three goblets before, a hand offering a fourth"
+ },
+ {
+  "id": "five-of-cups",
+  "name": "Five of Cups",
+  "scene": "a cloaked figure mourning three spilled goblets, two standing behind, bridge"
+ },
+ {
+  "id": "six-of-cups",
+  "name": "Six of Cups",
+  "scene": "a child giving a goblet of flowers to a younger child in a courtyard"
+ },
+ {
+  "id": "seven-of-cups",
+  "name": "Seven of Cups",
+  "scene": "a figure facing seven goblets in clouds holding visions (castle, jewels, wreath, snake)"
+ },
+ {
+  "id": "eight-of-cups",
+  "name": "Eight of Cups",
+  "scene": "a figure walking away from eight stacked goblets under a moon"
+ },
+ {
+  "id": "nine-of-cups",
+  "name": "Nine of Cups",
+  "scene": "a content man seated with arms crossed, nine goblets on a shelf behind"
+ },
+ {
+  "id": "ten-of-cups",
+  "name": "Ten of Cups",
+  "scene": "a family under a rainbow of ten goblets, children dancing, home in distance"
+ },
+ {
+  "id": "page-of-cups",
+  "name": "Page of Cups",
+  "scene": "a young person holding a goblet with a small fish peeking out, sea behind"
+ },
+ {
+  "id": "knight-of-cups",
+  "name": "Knight of Cups",
+  "scene": "a calm knight on a white horse offering a goblet, river"
+ },
+ {
+  "id": "queen-of-cups",
+  "name": "Queen of Cups",
+  "scene": "a queen at the shore holding an ornate lidded goblet, gazing into it"
+ },
+ {
+  "id": "king-of-cups",
+  "name": "King of Cups",
+  "scene": "a king on a throne floating on the sea, goblet and sceptre, ship and fish"
+ },
+ {
+  "id": "ace-of-swords",
+  "name": "Ace of Swords",
+  "scene": "a hand from a cloud holding an upright sword through a crown, mountains"
+ },
+ {
+  "id": "two-of-swords",
+  "name": "Two of Swords",
+  "scene": "a blindfolded woman seated by the sea, two swords crossed over her chest, moon"
+ },
+ {
+  "id": "three-of-swords",
+  "name": "Three of Swords",
+  "scene": "a heart pierced by three swords, rain clouds"
+ },
+ {
+  "id": "four-of-swords",
+  "name": "Four of Swords",
+  "scene": "a knight resting on a tomb, hands in prayer, one sword below, three on wall"
+ },
+ {
+  "id": "five-of-swords",
+  "name": "Five of Swords",
+  "scene": "a smug figure holding three swords, two others walking away defeated"
+ },
+ {
+  "id": "six-of-swords",
+  "name": "Six of Swords",
+  "scene": "a ferryman rowing a woman and child in a boat with six swords, calm water ahead"
+ },
+ {
+  "id": "seven-of-swords",
+  "name": "Seven of Swords",
+  "scene": "a figure sneaking away from a camp carrying five swords, two left behind"
+ },
+ {
+  "id": "eight-of-swords",
+  "name": "Eight of Swords",
+  "scene": "a blindfolded, loosely bound woman surrounded by eight swords, castle on hill"
+ },
+ {
+  "id": "nine-of-swords",
+  "name": "Nine of Swords",
+  "scene": "a person sitting up in bed, face in hands, nine swords on dark wall"
+ },
+ {
+  "id": "ten-of-swords",
+  "name": "Ten of Swords",
+  "scene": "a figure lying face down with ten swords in the back, dawn breaking on horizon (no blood, soft and symbolic)"
+ },
+ {
+  "id": "page-of-swords",
+  "name": "Page of Swords",
+  "scene": "a young person holding a sword up on windy hills, birds"
+ },
+ {
+  "id": "knight-of-swords",
+  "name": "Knight of Swords",
+  "scene": "a knight charging on a horse with sword raised, wind-torn clouds"
+ },
+ {
+  "id": "queen-of-swords",
+  "name": "Queen of Swords",
+  "scene": "a stern queen in profile, sword upright, hand raised, clouds and butterflies"
+ },
+ {
+  "id": "king-of-swords",
+  "name": "King of Swords",
+  "scene": "a king seated facing forward, sword upright, butterflies on throne"
+ },
+ {
+  "id": "ace-of-pentacles",
+  "name": "Ace of Pentacles",
+  "scene": "a hand from a cloud holding a gold coin above a garden gate archway"
+ },
+ {
+  "id": "two-of-pentacles",
+  "name": "Two of Pentacles",
+  "scene": "a young man juggling two coins in an infinity loop, ships on waves"
+ },
+ {
+  "id": "three-of-pentacles",
+  "name": "Three of Pentacles",
+  "scene": "a craftsman working on a temple arch, monk and architect watching"
+ },
+ {
+  "id": "four-of-pentacles",
+  "name": "Four of Pentacles",
+  "scene": "a man clutching a coin, one on his crown, two under his feet, city behind"
+ },
+ {
+  "id": "five-of-pentacles",
+  "name": "Five of Pentacles",
+  "scene": "two poor figures walking in snow past a lit temple window with five coins"
+ },
+ {
+  "id": "six-of-pentacles",
+  "name": "Six of Pentacles",
+  "scene": "a merchant with scales giving coins to two kneeling people"
+ },
+ {
+  "id": "seven-of-pentacles",
+  "name": "Seven of Pentacles",
+  "scene": "a farmer leaning on a hoe, looking at seven coins growing on a vine"
+ },
+ {
+  "id": "eight-of-pentacles",
+  "name": "Eight of Pentacles",
+  "scene": "an artisan carving coins at a bench, eight coins displayed"
+ },
+ {
+  "id": "nine-of-pentacles",
+  "name": "Nine of Pentacles",
+  "scene": "an elegant woman in a vineyard with a bird on her gloved hand, nine coins"
+ },
+ {
+  "id": "ten-of-pentacles",
+  "name": "Ten of Pentacles",
+  "scene": "an elder with dogs, a family under an archway, ten coins arranged in a tree pattern"
+ },
+ {
+  "id": "page-of-pentacles",
+  "name": "Page of Pentacles",
+  "scene": "a young student holding up one coin, studying it, green field"
+ },
+ {
+  "id": "knight-of-pentacles",
+  "name": "Knight of Pentacles",
+  "scene": "a knight on a still heavy horse holding a coin, ploughed fields"
+ },
+ {
+  "id": "queen-of-pentacles",
+  "name": "Queen of Pentacles",
+  "scene": "a queen in a garden holding a coin in her lap, rabbit nearby"
+ },
+ {
+  "id": "king-of-pentacles",
+  "name": "King of Pentacles",
+  "scene": "a king on a throne with bull heads and grapevines, holding a coin and sceptre"
+ }
+]
