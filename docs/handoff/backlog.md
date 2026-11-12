@@ -13,6 +13,10 @@
 - [ ] คำทำนาย Minor Arcana 56 ใบ
 
 ## ภาพ
+- [ ] **ให้ ChatGPT (gpt-image) วาดไพ่ครบ 78 ใบตามธีมเดิม** (ม่วง/ชมพู/ครีม/ทอง กรอบกนก คนไทย) ใช้คำสั่งใน 04-chatgpt-cards.md, แนบรูป The Sun / Temperance / The Fool เป็น reference ทุกครั้ง
+  - ทางรัน: ผ่าน OpenAI Images API จาก session นี้ (ต้องแก้ key OpenAI เป็น Bearer ก่อน) หรือ owner รันใน ChatGPT เองแล้วอัปโหลดเข้า public/cards/raw/
+  - Major 22 ใบ: ใช้ชุดที่ owner มีอยู่ หรือเจนใหม่ให้สไตล์เท่ากันทั้งสำรับ
+  - Star: วาดแบบมิดชิด (ห่มผ้าบาง)
 - [ ] รูปไพ่ Major ที่เหลือ 18 ใบ (รอ owner ส่งใหม่)
 - [ ] เลือก The Hermit 1 จาก 2 แบบ
 - [ ] The Star: ปิดให้มิดชิดขึ้น หรือเปลี่ยนไพ่บน hero หน้าแรก
