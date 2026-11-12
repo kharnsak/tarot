@@ -55,13 +55,13 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
 
   // ivory ground with a very soft light
   const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, "#FAF8F3");
-  bg.addColorStop(1, "#F1ECE1");
+  bg.addColorStop(0, "#FBFAF8");
+  bg.addColorStop(1, "#F1EEFB");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
   const light = ctx.createRadialGradient(W / 2, H * 0.3, 20, W / 2, H * 0.3, W * 0.8);
-  light.addColorStop(0, "rgba(233,207,138,.22)");
-  light.addColorStop(1, "rgba(233,207,138,0)");
+  light.addColorStop(0, "rgba(109,74,255,.10)");
+  light.addColorStop(1, "rgba(109,74,255,0)");
   ctx.fillStyle = light;
   ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = gold(ctx, 0, 0, W, H);
@@ -78,7 +78,7 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
   ctx.fillStyle = gold(ctx, W / 2 - 150, 0, W / 2 + 150, 0);
   ctx.font = '600 44px "Anuphan"';
   ctx.fillText(ui.brand, W / 2, top);
-  ctx.fillStyle = "#6B6660";
+  ctx.fillStyle = "#5F5978";
   ctx.font = '400 28px "Anuphan"';
   const label = reading.daily ? ui.share.dailyLabel : chipOf(reading).label;
   ctx.fillText(`${label} · ${thaiDate(new Date(reading.createdAt))}`, W / 2, top + 54);
@@ -102,7 +102,7 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
     ctx.shadowColor = "rgba(40,30,10,.38)";
     ctx.shadowBlur = 60;
     ctx.shadowOffsetY = 28;
-    ctx.fillStyle = "#2a1745";
+    ctx.fillStyle = "#1B1530";
     ctx.beginPath();
     ctx.roundRect(x, cy, cw, ch, 16);
     ctx.fill();
@@ -118,20 +118,20 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
     } else ctx.drawImage(image, x, cy, cw, ch);
     ctx.restore();
     if (count > 1) {
-      ctx.fillStyle = "#8A6A22";
+      ctx.fillStyle = "#5A37E8";
       ctx.font = '500 26px "Anuphan"';
       ctx.fillText(resolved[i].label + (resolved[i].reversed ? ` · ${ui.result.reversed}` : ""), x + cw / 2, cy + ch + 50);
-      ctx.fillStyle = "#2a1745";
+      ctx.fillStyle = "#1B1530";
       ctx.font = '600 32px "Anuphan"';
       ctx.fillText(card.nameTh, x + cw / 2, cy + ch + 96);
     }
   }
   let y = cy + ch + (count > 1 ? 96 : 0);
   if (count === 1) {
-    ctx.fillStyle = "#2a1745";
+    ctx.fillStyle = "#1B1530";
     ctx.font = '600 48px "Anuphan"';
     ctx.fillText(selected[0].nameTh + (resolved[0].reversed ? ` · ${ui.result.reversed}` : ""), W / 2, y + 84);
-    ctx.fillStyle = "#8A6A22";
+    ctx.fillStyle = "#5A37E8";
     ctx.font = 'italic 500 34px "Cormorant Garamond"';
     ctx.fillText(selected[0].nameEn, W / 2, y + 132);
     y += 132;
@@ -140,7 +140,7 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
   // the big line
   const quote = cardText(resolved[quoteIndex(count)].card, resolved[quoteIndex(count)].reversed, "advice");
   const qsize = story ? 70 : 58;
-  ctx.fillStyle = "#2a1745";
+  ctx.fillStyle = "#1B1530";
   ctx.font = `600 ${qsize}px "Anuphan"`;
   const ql = lines(ctx, quote, W - 220).slice(0, story ? 5 : 4);
   y += story ? 130 : 108;
@@ -150,7 +150,7 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
   if (story && count > 1) {
     y += 110;
     ctx.font = '400 32px "Anuphan"';
-    ctx.fillStyle = "#6B6660";
+    ctx.fillStyle = "#5F5978";
     for (const [i, card] of selected.entries()) {
       const row = `${resolved[i].label} · ${card.keywords[0] ?? card.keyword}`;
       ctx.fillText(lines(ctx, row, W - 240)[0], W / 2, y + i * 58);
@@ -168,7 +168,7 @@ export async function createShareImage(reading: Reading, artwork: Record<string,
   ctx.fillStyle = gold(ctx, W / 2 - 160, 0, W / 2 + 160, 0);
   ctx.font = 'italic 500 34px "Cormorant Garamond"';
   ctx.fillText("C H A N J A I   T A R O T", W / 2, fy);
-  ctx.fillStyle = "#6B6660";
+  ctx.fillStyle = "#5F5978";
   ctx.font = '400 22px "Anuphan"';
   ctx.fillText(ui.home.disclaimer, W / 2, fy + 44);
 

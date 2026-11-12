@@ -18,6 +18,7 @@ import {
   Search,
   Settings,
   Share2,
+  Sparkles,
   ShieldCheck,
   Sun,
   Trash2,
@@ -27,8 +28,8 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { ArtworkContext, CardArt } from "./art";
 import { astroProfile } from "./astro";
-import { cards, cardById, entryById, topics } from "./tarot";
-import type { Card } from "./tarot";
+import { cardById, cardText, entryById, getDeck, topics } from "./tarot";
+import type { CardEntry } from "./tarot";
 import { dayKey, loadBirth, loadJournal, saveBirth, saveJournal, streakInfo, thaiDate } from "./storage";
 import type { Birth, Reading } from "./storage";
 import { createShareImage } from "./share";
@@ -38,6 +39,9 @@ import ReadingFlow from "./ReadingFlow";
 import { chipOf, ui } from "./ui/copy";
 import { chips } from "./ui/copy";
 import { applyTheme, readTheme } from "./ui/theme";
+import Leaves from "./ui/Leaves";
+import HeroStage from "./ui/HeroStage";
+import { luckyFromCard, moonPath, moonPhase, thaiDay } from "./ui/today";
 import type { Theme } from "./ui/theme";
 
 type Screen =
@@ -67,23 +71,29 @@ function topicLabel(r: Reading) {
   return r.daily ? ui.journal.daily : (chipOf(r).label || topics.find((t) => t.id === r.topic)?.label || "");
 }
 
+const allCards = getDeck("full");
+
 function Library() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [selected, setSelected] = useState<Card>();
+  const [selected, setSelected] = useState<CardEntry>();
+  const [side, setSide] = useState<"up" | "rev">("up");
   const [backScroll, setBackScroll] = useState(0);
-  const results = cards.filter(
+  const q = search.toLowerCase().trim();
+  const results = allCards.filter(
     (c) =>
       (filter === "all" || (filter === "major" ? c.arcana === "major" : c.suit === filter)) &&
-      `${c.name} ${c.thai} ${c.keyword}`.toLowerCase().includes(search.toLowerCase().trim()),
+      `${c.nameEn} ${c.nameTh} ${c.keywords.join(" ")}`.toLowerCase().includes(q),
   );
   const scroller = () => document.querySelector(".dialog-body");
-  function view(card: Card) {
+  function view(card: CardEntry) {
     setBackScroll(scroller()?.scrollTop || 0);
     setSelected(card);
+    setSide("up");
     scroller()?.scrollTo({ top: 0 });
   }
-  if (selected)
+  if (selected) {
+    const rev = side === "rev";
     return (
       <div className="library-detail">
         <button
@@ -96,19 +106,29 @@ function Library() {
           <ArrowLeft size={16} />
           {ui.library.back}
         </button>
-        <div className="detail-hero">
-          <CardArt card={selected} />
-          <span className="en">{selected.name}</span>
-          <h2>{selected.thai}</h2>
-          <p className="quote small">{selected.keyword}</p>
+        <div className="detail-grid">
+          <div className="detail-hero">
+            <CardArt card={selected} />
+            <span className="en">{selected.nameEn}</span>
+            <h2>{selected.nameTh}</h2>
+            <div className="kw">{selected.keywords.map((k) => <i key={k}>{k}</i>)}</div>
+          </div>
+          <div className="detail-body">
+            <div className="segment" role="group" aria-label="ด้านของไพ่">
+              <button className={!rev ? "on" : ""} aria-pressed={!rev} onClick={() => setSide("up")}>ไพ่หัวตั้ง</button>
+              <button className={rev ? "on" : ""} aria-pressed={rev} onClick={() => setSide("rev")}>ไพ่กลับหัว</button>
+            </div>
+            <section><h3>{ui.library.message}</h3><p>{cardText(selected, rev, "core")}</p></section>
+            <section><h3>{ui.library.love}</h3><p>{cardText(selected, rev, "love")}</p></section>
+            <section><h3>{ui.library.work}</h3><p>{cardText(selected, rev, "work")}</p></section>
+            <section><h3>การเงิน</h3><p>{cardText(selected, rev, "money")}</p></section>
+            <section className="note"><p>{cardText(selected, rev, "advice")}</p></section>
+            <p className="fine">{ui.library.note}</p>
+          </div>
         </div>
-        <section><h3>{ui.library.message}</h3><p>{selected.message}</p></section>
-        <section><h3>{ui.library.love}</h3><p>{selected.love}</p></section>
-        <section><h3>{ui.library.work}</h3><p>{selected.work}</p></section>
-        <section className="note"><p>{selected.advice}</p></section>
-        <p className="fine center">{ui.library.note}</p>
       </div>
     );
+  }
   return (
     <div className="library">
       <h2>{ui.library.title}</h2>
@@ -129,8 +149,8 @@ function Library() {
         {results.map((card) => (
           <button key={card.id} onClick={() => view(card)}>
             <CardArt card={card} decorative />
-            <h3>{card.thai}</h3>
-            <span>{card.name}</span>
+            <h3>{card.nameTh}</h3>
+            <span>{card.nameEn}</span>
           </button>
         ))}
       </div>
@@ -305,6 +325,9 @@ export default function App() {
   const dailyCard = daily ? entryById.get(daily.cards[0]) : undefined;
   const streak = streakInfo(journal.readings);
   const [birth, setBirth] = useState(loadBirth);
+  const luckyToday = dailyCard ? luckyFromCard(dailyCard) : undefined;
+  const moon = moonPhase();
+  const dayInfo = thaiDay();
   const lucky = birth ? astroProfile(birth)?.luckyColors ?? [] : [];
 
   useEffect(() => applyTheme(theme), [theme]);
@@ -362,6 +385,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <ArtworkContext.Provider value={artwork}>
+        <Leaves />
         <div className="shell">
           <a href="#main-content" className="skip-link">{ui.skip}</a>
           <header className="header">
@@ -380,57 +404,88 @@ export default function App() {
           </header>
 
           <main id="main-content">
-            <motion.section className="home-top" initial={reduce ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
-              <p className="eyebrow">{greeting()} · {thaiDate(new Date(), true)}</p>
-              <h1>{ui.home.dailyTitle}</h1>
-              <p className="muted lead">{ui.home.dailySub}</p>
-            </motion.section>
+            <section className="hero">
+              <HeroStage />
+              <div className="hero-copy">
+                <motion.div className="hero-title" initial={reduce ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+                  <p className="eyebrow">{greeting()} · {thaiDate(new Date(), true)}</p>
+                  <h1>{ui.home.dailyTitle}</h1>
+                  <p className="lead">{ui.home.dailySub}</p>
+                </motion.div>
 
-            <motion.section className="daily-card glass" aria-label={ui.home.dailyTitle} initial={reduce ? false : { opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.08 }}>
-              <button className="daily-visual" onClick={openDaily} aria-hidden="true" tabIndex={-1}>
-                <span className="halo" aria-hidden="true" />
-                <div className="daily-stack" aria-hidden="true">
-                  <div className="ghost left"><CardArt decorative /></div>
-                  <div className="ghost right"><CardArt decorative /></div>
-                  <div className="daily-front"><CardArt card={dailyCard} decorative /></div>
-                </div>
-              </button>
-              {dailyCard && <p className="quote small">{dailyCard.daily || dailyCard.advice}</p>}
-              {dailyCard && lucky.length > 0 && <p className="lucky" data-testid="lucky"><b>{ui.home.luckyColors}</b> · {lucky.join(" · ")}</p>}
-              <button className="button primary full" onClick={openDaily}>
-                {daily ? ui.home.dailyDone : ui.home.dailyCta}
-                <ArrowRight size={18} />
-              </button>
-            </motion.section>
+                <motion.div className="daily-card" aria-label={ui.home.dailyTitle} initial={reduce ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.08 }}>
+                  {dailyCard && <p className="quote small">{dailyCard.daily || dailyCard.advice}</p>}
+                  {dailyCard && lucky.length > 0 && <p className="lucky" data-testid="lucky"><b>{ui.home.luckyColors}</b> · {lucky.join(" · ")}</p>}
+                  <button className="button primary full" onClick={openDaily}>
+                    {daily ? ui.home.dailyDone : ui.home.dailyCta}
+                    <ArrowRight size={18} />
+                  </button>
+                </motion.div>
 
-            <section className="topics" aria-labelledby="topics-heading">
-              <h2 id="topics-heading">{ui.home.topicsTitle}</h2>
-              <div className="chip-grid">
-                {chips.map((c, i) => {
-                  const Icon = chipIcons[c.id];
-                  return (
-                    <motion.button
-                      key={c.id}
-                      className="chip"
-                      onClick={() => setScreen({ kind: "reading", chip: c.id })}
-                      initial={reduce ? false : { opacity: 0, y: 16 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true, amount: 0.3 }}
-                      transition={{ ...spring, delay: i * 0.04 }}
-                    >
-                      <Icon size={22} strokeWidth={1.4} />
-                      <span>{c.label}</span>
-                    </motion.button>
-                  );
-                })}
+                <section className="topics" aria-labelledby="topics-heading">
+                  <h2 id="topics-heading">{ui.home.topicsTitle}</h2>
+                  <div className="chip-grid">
+                    {chips.map((c, i) => {
+                      const Icon = chipIcons[c.id];
+                      return (
+                        <motion.button
+                          key={c.id}
+                          className="chip"
+                          onClick={() => setScreen({ kind: "reading", chip: c.id })}
+                          initial={reduce ? false : { opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ ...spring, delay: 0.16 + i * 0.04 }}
+                        >
+                          <Icon size={24} strokeWidth={1.5} />
+                          <span>{c.label}</span>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </section>
               </div>
             </section>
 
-            <div className="streak" title={ui.home.streakHint}>
-              <Flame size={16} strokeWidth={1.8} />
-              <span>{ui.home.streak(streak.current)}</span>
+            <section className="today" aria-labelledby="today-heading">
+              <h2 id="today-heading">วันนี้ของเธอ</h2>
+              <div className="today-grid">
+                <div className="tile" data-testid="moon">
+                  <svg className="glyph" viewBox="0 0 56 56" aria-hidden="true">
+                    <circle cx="28" cy="28" r="22" fill="#2a2150" />
+                    <circle cx="28" cy="28" r="22" fill="none" stroke="#c9a24b" strokeWidth="1" />
+                    <path d={moonPath(moon.p, 22, 28, 28)} fill="#e9c96a" />
+                  </svg>
+                  <div><small>พระจันทร์วันนี้</small><b>{moon.name}</b><span className="sub">สว่าง {Math.round(moon.lit * 100)}%</span></div>
+                </div>
+                <div className="tile" data-testid="day-colour">
+                  <div className="glyph"><span className="swatch" style={{ background: dayInfo.hex }} /></div>
+                  <div><small>{dayInfo.day}</small><b>{dayInfo.colour}ประจำวัน</b><span className="sub">สีที่ช่วยให้ใจนิ่งและมั่นใจ</span></div>
+                </div>
+                {luckyToday ? (
+                  <div className="tile" data-testid="lucky-card">
+                    <div className="glyph"><span className="num">{luckyToday.number}</span></div>
+                    <div>
+                      <small>เลขและสีนำโชค จากไพ่วันนี้</small>
+                      <b>เลข {luckyToday.number} · {luckyToday.colour.name}</b>
+                      <span className="sub">จาก {dailyCard?.nameTh}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <button className="tile locked" onClick={openDaily} data-testid="lucky-card">
+                    <div className="glyph"><Sparkles size={26} strokeWidth={1.4} /></div>
+                    <div><small>เลขและสีนำโชค</small><b>เปิดไพ่ประจำวันเพื่อดู</b><span className="sub">คำนวณจากไพ่ที่ได้วันนี้</span></div>
+                  </button>
+                )}
+              </div>
+            </section>
+
+            <div className="streak-row">
+              <div className="streak" title={ui.home.streakHint}>
+                <Flame size={16} strokeWidth={1.8} />
+                <span>{ui.home.streak(streak.current)}</span>
+              </div>
+              {ui.home.streakNote(streak) && <p className="fine streak-note" data-testid="streak-note">{ui.home.streakNote(streak)}</p>}
             </div>
-            {ui.home.streakNote(streak) && <p className="fine streak-note" data-testid="streak-note">{ui.home.streakNote(streak)}</p>}
           </main>
 
           <footer className="footer">
